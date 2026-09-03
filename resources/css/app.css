@@ -1,0 +1,404 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-display: 'Poppins', 'Inter', 'Segoe UI', system-ui, sans-serif;
+
+    /* One easing vocabulary for the whole interface. */
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+ * Each school sets its own primary and secondary colour in School settings.
+ * The layouts write them onto :root, so branding flows through the whole
+ * interface without a rebuild.
+ */
+@theme inline {
+    --color-brand: var(--brand-primary, #0b3c91);
+    --color-accent: var(--brand-secondary, #d4af37);
+}
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        -webkit-font-smoothing: antialiased;
+        /* `clip` rather than `hidden`: `hidden` would turn the body into a
+           scroll container and break every `position: sticky` inside it. */
+        overflow-x: clip;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: var(--font-display);
+    }
+
+    a, button, input, select, textarea, summary, [role='button'] {
+        transition-property: color, background-color, border-color, outline-color, box-shadow,
+            transform, opacity, filter;
+        transition-timing-function: var(--ease-out-soft);
+        transition-duration: 200ms;
+    }
+
+    :focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--color-accent) 85%, transparent);
+        outline-offset: 2px;
+    }
+
+    /* Keyboard users can jump straight past the navigation. */
+    .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        z-index: 2000;
+        padding: 0.75rem 1.25rem;
+        background: var(--color-brand);
+        color: #fff;
+        border-radius: 0 0 0.5rem 0;
+    }
+
+    .skip-link:focus {
+        left: 0;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ | Keyframes
+ --------------------------------------------------------------------------- */
+
+@keyframes gsms-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes gsms-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes gsms-slide-left {
+    from { opacity: 0; transform: translateX(-14px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes gsms-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes gsms-hero-in {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gsms-shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+}
+
+@keyframes gsms-grow-bar {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+@keyframes gsms-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes gsms-spin { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------------------
+ | Motion utilities
+ --------------------------------------------------------------------------- */
+
+@utility enter-fade { animation: gsms-fade-in 400ms var(--ease-out-soft) both; }
+@utility enter-rise { animation: gsms-rise 480ms var(--ease-out-soft) both; }
+@utility enter-left { animation: gsms-slide-left 450ms var(--ease-out-soft) both; }
+@utility enter-pop { animation: gsms-pop 380ms var(--ease-spring) both; }
+@utility float-soft { animation: gsms-float 4s ease-in-out infinite; }
+@utility spin-soft { animation: gsms-spin 700ms linear infinite; }
+
+@utility stagger-1 { animation-delay: 40ms; }
+@utility stagger-2 { animation-delay: 90ms; }
+@utility stagger-3 { animation-delay: 140ms; }
+@utility stagger-4 { animation-delay: 190ms; }
+@utility stagger-5 { animation-delay: 240ms; }
+@utility stagger-6 { animation-delay: 290ms; }
+
+@utility shimmer {
+    background-image: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+    background-size: 200% 100%;
+    animation: gsms-shimmer 1.4s linear infinite;
+}
+
+@utility grow-bar {
+    transform-origin: bottom;
+    animation: gsms-grow-bar 700ms var(--ease-out-soft) both;
+    animation-delay: calc(var(--bar-index, 0) * 70ms);
+}
+
+@utility press {
+    &:active { transform: scale(0.97); transition-duration: 80ms; }
+}
+
+@utility link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0% 1px;
+    transition: background-size 260ms var(--ease-out-soft);
+
+    &:hover { background-size: 100% 1px; }
+}
+
+/* ---------------------------------------------------------------------------
+ | Shared building blocks
+ --------------------------------------------------------------------------- */
+
+@layer components {
+    /* The signature card: lifts and warms its border on hover. */
+    .card-soft {
+        border: 1px solid var(--color-slate-200);
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 2px 6px rgb(15 27 51 / 0.06);
+        transition: transform 0.25s var(--ease-out-soft),
+                    box-shadow 0.25s var(--ease-out-soft),
+                    border-color 0.25s var(--ease-out-soft);
+    }
+
+    .card-soft:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 10px 30px rgb(15 27 51 / 0.1);
+        border-color: color-mix(in srgb, var(--color-brand) 25%, transparent);
+    }
+
+    /* Icon tile that fills with the brand colour when its card is hovered. */
+    .icon-badge {
+        width: 3.25rem;
+        height: 3.25rem;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 0.9rem;
+        font-size: 1.35rem;
+        background: color-mix(in srgb, var(--color-brand) 8%, transparent);
+        color: var(--color-brand);
+        transition: background 0.25s var(--ease-out-soft),
+                    color 0.25s var(--ease-out-soft),
+                    transform 0.25s var(--ease-out-soft);
+    }
+
+    .icon-badge--accent {
+        background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+        color: color-mix(in srgb, var(--color-accent) 80%, #000);
+    }
+
+    .card-soft:hover .icon-badge {
+        background: var(--color-brand);
+        color: #fff;
+        transform: scale(1.06);
+    }
+
+    /* Small uppercase label preceded by a short accent rule. */
+    .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: color-mix(in srgb, var(--color-accent) 78%, #000);
+    }
+
+    .eyebrow::before {
+        content: '';
+        width: 28px;
+        height: 2px;
+        background: var(--color-accent);
+    }
+
+    .eyebrow--center::before { display: none; }
+
+    .eyebrow--onDark { color: color-mix(in srgb, var(--color-accent) 70%, #fff); }
+
+    /* Generous, viewport-aware section rhythm. */
+    .section { padding-block: clamp(3.5rem, 7vw, 6rem); }
+    .section--tight { padding-block: clamp(2.5rem, 5vw, 4rem); }
+    .section--surface { background: #f6f8fc; }
+
+    .section--ink {
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--color-brand) 88%, #000) 0%,
+            var(--color-brand) 55%,
+            color-mix(in srgb, var(--color-brand) 80%, #1d4ed8) 100%);
+        color: rgb(255 255 255 / 0.9);
+    }
+
+    .section--ink h1, .section--ink h2, .section--ink h3 { color: #fff; }
+
+    /* Public header, deepened once the page scrolls. */
+    .site-header {
+        transition: box-shadow 0.25s var(--ease-out-soft),
+                    background-color 0.25s var(--ease-out-soft);
+    }
+
+    .site-header.is-stuck {
+        box-shadow: 0 10px 30px rgb(15 27 51 / 0.08);
+        background-color: rgb(255 255 255 / 0.97);
+    }
+
+    /* ---- Hero slider ---- */
+    .hero { position: relative; background: #06142e; }
+
+    .hero .hero-slide {
+        position: relative;
+        min-height: clamp(520px, 82vh, 820px);
+        display: grid;
+        align-items: center;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .hero .hero-slide::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg,
+            rgb(6 20 46 / 0.92) 8%,
+            color-mix(in srgb, var(--color-brand) 78%, transparent) 48%,
+            rgb(6 20 46 / 0.55) 100%);
+    }
+
+    .hero .hero-content {
+        position: relative;
+        z-index: 2;
+        color: #fff;
+        max-width: 46rem;
+        padding-block: 4rem;
+    }
+
+    /* Slide text animates only for the slide that is actually showing. */
+    .hero .swiper-slide .hero-content > * {
+        opacity: 0;
+        transform: translateY(28px);
+    }
+
+    .hero .swiper-slide-active .hero-content > * {
+        animation: gsms-hero-in 0.8s var(--ease-out-soft) forwards;
+    }
+
+    .hero .swiper-slide-active .hero-content > *:nth-child(1) { animation-delay: 0.12s; }
+    .hero .swiper-slide-active .hero-content > *:nth-child(2) { animation-delay: 0.24s; }
+    .hero .swiper-slide-active .hero-content > *:nth-child(3) { animation-delay: 0.36s; }
+    .hero .swiper-slide-active .hero-content > *:nth-child(4) { animation-delay: 0.48s; }
+    .hero .swiper-slide-active .hero-content > *:nth-child(5) { animation-delay: 0.60s; }
+    .hero .swiper-slide-active .hero-content > *:nth-child(6) { animation-delay: 0.72s; }
+
+    .hero .swiper-button-next,
+    .hero .swiper-button-prev {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgb(255 255 255 / 0.12);
+        border: 1px solid rgb(255 255 255 / 0.28);
+        color: #fff;
+        backdrop-filter: blur(4px);
+    }
+
+    .hero .swiper-button-next::after,
+    .hero .swiper-button-prev::after { font-size: 1.05rem; font-weight: 700; }
+
+    .hero .swiper-button-next:hover,
+    .hero .swiper-button-prev:hover {
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+        color: #14213d;
+    }
+
+    .hero .swiper-pagination-bullet {
+        background: rgb(255 255 255 / 0.55);
+        opacity: 1;
+        width: 10px;
+        height: 10px;
+    }
+
+    .hero .swiper-pagination-bullet-active {
+        background: var(--color-accent);
+        width: 30px;
+        border-radius: 50rem;
+    }
+
+    /* ---- Statistics strip ---- */
+    .stat-strip {
+        background: linear-gradient(120deg,
+            var(--color-brand) 0%,
+            color-mix(in srgb, var(--color-brand) 82%, #000) 100%);
+        color: #fff;
+    }
+
+    .stat-strip .stat { text-align: center; padding: 1.75rem 1rem; }
+
+    .stat-strip .stat-icon {
+        font-size: 1.6rem;
+        color: var(--color-accent);
+        margin-bottom: 0.6rem;
+    }
+
+    .stat-strip .stat-value {
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 3.5vw, 2.85rem);
+        font-weight: 800;
+        line-height: 1;
+        color: #fff;
+    }
+
+    .stat-strip .stat-label {
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        color: rgb(255 255 255 / 0.78);
+        letter-spacing: 0.04em;
+    }
+
+    /* Image that pushes in slightly when its container is hovered. */
+    .zoom-frame { overflow: hidden; }
+
+    .zoom-frame img {
+        transition: transform 0.6s var(--ease-out-soft);
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .zoom-frame:hover img { transform: scale(1.06); }
+}
+
+/* ---------------------------------------------------------------------------
+ | Reduced motion
+ |
+ | Anyone who has asked their system to reduce motion gets the interface with
+ | none of it: content still arrives, it simply does not move.
+ --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+
+    .card-soft:hover { transform: none; }
+    .press:active { transform: none; }
+    .zoom-frame:hover img { transform: none; }
+    .hero .swiper-slide .hero-content > * { opacity: 1; transform: none; }
+}
