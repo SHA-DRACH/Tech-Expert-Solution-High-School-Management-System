@@ -155,7 +155,8 @@ class UserManagementController extends Controller
         $this->authorize('viewAny', User::class);
 
         $users = $this->query($this->filters($request))
-            ->with(['roles:id,name', 'school:id,name'])
+            // The linked person is named on every row, so load it with the rows.
+            ->with(['roles:id,name', 'school:id,name', 'teacherProfile', 'guardianProfile', 'studentProfile'])
             ->orderBy('name')
             ->get();
 

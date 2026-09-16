@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\AttendanceRecord;
 use App\Models\Guardian;
 use App\Models\Invoice;
@@ -27,9 +28,19 @@ class ExportController extends Controller
     {
         abort_unless($request->user()->hasPermission('students.export'), 403);
 
+        $year = AcademicYear::active();
+
+        // Every filter the screen offers has to be honoured here too, or the
+        // file quietly holds more students than the list it was exported from.
         $students = Student::with(['currentEnrollment.section.schoolClass', 'guardians'])
             ->search($request->string('search')->trim()->toString())
             ->when($request->string('status')->trim()->toString(), fn ($q, $status) => $q->where('status', $status))
+            ->when($request->integer('class') ?: null, fn ($q, $class) => $q->whereHas(
+                'enrollments',
+                fn ($inner) => $inner
+                    ->where('school_class_id', $class)
+                    ->when($year, fn ($e) => $e->where('academic_year_id', $year->id))
+            ))
             ->orderBy('last_name')
             ->get();
 

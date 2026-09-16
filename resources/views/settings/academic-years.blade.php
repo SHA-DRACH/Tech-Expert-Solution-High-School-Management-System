@@ -2,16 +2,16 @@
     $current = $years->firstWhere('is_current', true);
 @endphp
 
-<x-layouts.app title="Academic years & terms" heading="Academic years & terms">
+<x-layouts.app title="Academic years & periods" heading="Academic years & periods">
     <x-ui.breadcrumbs :trail="[
         'Overview' => route('dashboard'),
         'Settings' => route('settings.index'),
-        'Academic years & terms' => null,
+        'Academic years & periods' => null,
     ]" />
 
     <x-ui.page-header
-        title="Academic years & terms"
-        description="Enrolment, attendance, marks, report cards and invoices are all filed against a year and a term."
+        title="Academic years & periods"
+        description="Set each year's time frame: its start and end, and the dates of its six periods. Enrolment, attendance, marks and invoices are all filed against them."
     />
 
     @error('year')
@@ -38,7 +38,7 @@
 
                     <x-slot:description>
                         {{ $year->starts_on->format('j M Y') }} &ndash; {{ $year->ends_on->format('j M Y') }}
-                        · {{ $year->terms_count }} {{ Str::plural('term', $year->terms_count) }}
+                        · {{ $year->terms_count }} {{ Str::plural($year->terms->whereNotNull('semester')->isNotEmpty() ? 'period' : 'term', $year->terms_count) }}
                         · {{ $year->enrollments_count }} {{ Str::plural('enrolment', $year->enrollments_count) }}
                     </x-slot:description>
 
@@ -87,6 +87,18 @@
                             </div>
                         </form>
                     </div>
+
+                    @if ($year->terms->whereNotNull('semester')->isNotEmpty())
+                        @include('settings.partials.year-periods', ['year' => $year])
+                    @else
+                        {{-- Still kept in terms: offer the conversion first. --}}
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-5 py-3">
+                            <p class="text-sm text-amber-900">This year is kept in terms. Organise it into six periods in two semesters; existing terms become the first periods and keep their marks.</p>
+                            <form method="POST" action="{{ route('periods.setup', $year) }}">
+                                @csrf
+                                <x-ui.button type="submit" size="sm">Set up six periods</x-ui.button>
+                            </form>
+                        </div>
 
                     {{-- The terms --}}
                     @if ($terms->isEmpty())
@@ -202,6 +214,7 @@
                             </form>
                         </div>
                     </div>
+                    @endif
                 </x-ui.card>
             @empty
                 <x-ui.empty-state
@@ -230,6 +243,13 @@
                         <x-ui.input name="ends_on" type="date" required />
                     </x-ui.field>
 
+                    {{-- On by default: a Liberian high school keeps six periods. --}}
+                    <label class="flex items-start gap-2 text-sm text-slate-700">
+                        <input type="checkbox" name="periods" value="1" checked
+                               class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand">
+                        <span>Set up six periods in two semesters<span class="block text-xs text-slate-500">Dates are spread across the year; adjust each period after.</span></span>
+                    </label>
+
                     <x-ui.button type="submit" class="w-full">Create year</x-ui.button>
                 </form>
             </x-ui.card>
@@ -242,7 +262,7 @@
                         @if ($currentTerm)
                             &middot; {{ $currentTerm->name }}
                         @else
-                            <span class="text-amber-700">&middot; no current term set</span>
+                            <span class="text-amber-700">&middot; no current period set</span>
                         @endif
                     </p>
                     <p class="mt-2 text-xs text-slate-500">

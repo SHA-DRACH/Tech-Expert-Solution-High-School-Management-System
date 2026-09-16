@@ -82,6 +82,8 @@
         .comment { margin-top: 18px; }
         .comment h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; margin: 0 0 4px; }
         .comment p { margin: 0; font-size: 13px; }
+        .verify { display: flex; align-items: center; gap: 12px; margin-top: 28px; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+        .verify p { margin: 0; font-size: 11px; line-height: 1.6; color: #64748b; }
         .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px; }
         .signature { border-top: 1px solid #94a3b8; padding-top: 6px; font-size: 11px; color: #64748b; }
         footer { margin-top: 26px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; gap: 12px; }
@@ -208,6 +210,20 @@
             <div class="signature">Principal</div>
             <div class="signature">Parent / guardian</div>
         </div>
+
+        {{--
+            The same verification code the on-screen card carries. It matters
+            more here, if anything: this file is emailed on and printed by
+            people who never touched the system, and the code is the only thing
+            in it that cannot simply be retyped.
+        --}}
+        @if (! empty($verifyCode))
+            <div class="verify">
+                <div>{!! $verifyCode !!}</div>
+                <p>Scan to verify this report card against {{ $school?->name }}'s records.<br>
+                   The check confirms the card was issued; it does not show marks.</p>
+            </div>
+        @endif
 
         <footer>
             <span>

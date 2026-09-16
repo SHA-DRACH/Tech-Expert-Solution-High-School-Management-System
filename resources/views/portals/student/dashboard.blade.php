@@ -23,8 +23,8 @@
             <x-ui.card title="Today's lessons" :description="now()->format('l, j F')" :padded="false">
                 @forelse ($todayTimetable as $entry)
                     <div class="flex items-center gap-3 border-b border-slate-100 px-5 py-3.5 last:border-0">
-                        <span class="shrink-0 font-mono text-xs text-slate-500">
-                            {{ \Illuminate\Support\Carbon::parse($entry->starts_at)->format('H:i') }}
+                        <span class="w-24 shrink-0 font-mono text-[11px] leading-tight text-slate-500">
+                            {{ App\Services\ClassSchedule::time($entry->starts_at) }}<br>{{ App\Services\ClassSchedule::time($entry->ends_at) }}
                         </span>
                         <div class="min-w-0">
                             <p class="truncate text-sm font-medium text-slate-900">{{ $entry->subject?->name }}</p>
@@ -36,6 +36,20 @@
                 @empty
                     <x-ui.empty-state icon="◷" title="No lessons today" description="Enjoy the break." />
                 @endforelse
+            </x-ui.card>
+        @endif
+
+        @if ($abilities['view_timetable'])
+            {{-- The whole week, not just today: the spec puts it on the dashboard. --}}
+            <x-ui.card class="lg:col-span-3" title="My week" description="Every class, its time and teacher." :padded="true">
+                <x-slot:actions>
+                    @if ($abilities['download_timetable'] && $week->isNotEmpty())
+                        <x-ui.button :href="route('student.timetable.download')" variant="ghost" size="sm">Download</x-ui.button>
+                    @endif
+                    <x-ui.button :href="route('student.timetable')" variant="ghost" size="sm">Open</x-ui.button>
+                </x-slot:actions>
+
+                <x-schedule.week :week="$week" :days="$days" />
             </x-ui.card>
         @endif
 

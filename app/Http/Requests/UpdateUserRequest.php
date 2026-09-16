@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Role;
+use App\Support\Delegation;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -51,6 +52,18 @@ class UpdateUserRequest extends FormRequest
 
                 if ($valid->count() !== $submitted->count()) {
                     $validator->errors()->add('roles', 'Select roles that belong to this school.');
+
+                    return;
+                }
+
+                $beyond = Delegation::beyond(
+                    $this->user(),
+                    Role::inCurrentSchool()->whereIn('id', $submitted)->with('permissions:id,slug')->get()
+                        ->flatMap(fn (Role $role) => $role->permissions->pluck('slug')),
+                );
+
+                if ($beyond->isNotEmpty()) {
+                    $validator->errors()->add('roles', 'You cannot give a role that holds permissions you do not have yourself ('.$beyond->join(', ').').');
                 }
             },
         ];

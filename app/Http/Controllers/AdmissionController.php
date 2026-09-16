@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Admission;
 use App\Models\AdmissionDocument;
 use App\Services\AuditLogger;
+use App\Services\DocumentCode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -54,6 +55,32 @@ class AdmissionController extends Controller
             'admission' => $admission,
             'reviewStatuses' => self::REVIEW_STATUSES,
             'documentStatuses' => AdmissionDocument::STATUSES,
+        ]);
+    }
+
+    /**
+     * The admission letter, ready to print.
+     *
+     * Only for an offer that actually exists. Printing one from a pending or
+     * rejected application would hand a family a document saying they have a
+     * place they have not been given, and the school would have no record of
+     * having issued it - so the status gate is the whole safety of this page.
+     */
+    public function letter(Request $request, Admission $admission): View
+    {
+        $this->authorize('view', $admission);
+
+        abort_unless(
+            in_array($admission->status, ['approved', 'enrolled'], true),
+            404,
+            'An admission letter exists only once a place has been offered.'
+        );
+
+        return view('admissions.letter', [
+            'admission' => $admission,
+            'school' => $request->user()->school,
+            'verifyCode' => app(DocumentCode::class)
+                ->forDocument('admission', $admission->application_number),
         ]);
     }
 

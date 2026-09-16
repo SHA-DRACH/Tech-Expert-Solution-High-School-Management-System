@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Term;
 use App\Services\AuditLogger;
+use App\Services\DocumentCode;
 use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,11 +68,17 @@ class FinanceController extends Controller
         abort_unless($request->user()->hasPermission('payments.record'), 403);
 
         return view('finance.record-payment', [
+            // The class comes along so the bursar can tell two children with
+            // the same name apart before taking their money.
             'invoices' => Invoice::outstanding()
-                ->with('student:id,first_name,last_name,student_number')
+                ->with([
+                    'student:id,first_name,middle_name,last_name,student_number',
+                    'student.currentEnrollment.section.schoolClass',
+                ])
                 ->latest('issued_on')
                 ->get(),
             'methods' => Payment::METHODS,
+            'provedMethods' => Payment::METHODS_NEEDING_PROOF,
         ]);
     }
 
@@ -83,9 +90,23 @@ class FinanceController extends Controller
             'invoice_id' => ['required', 'integer'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'method' => ['required', Rule::in(Payment::METHODS)],
-            'reference' => ['nullable', 'string', 'max:80'],
+            /*
+             | Required once the money moved somewhere the school cannot see.
+             | A bank or mobile-money payment happened elsewhere; the slip the
+             | family brings in is the only thing tying it to this school, and
+             | a payment recorded without it is one nobody can later trace.
+             */
+            'reference' => [
+                Rule::requiredIf(fn () => in_array($request->input('method'), Payment::METHODS_NEEDING_PROOF, true)),
+                'nullable', 'string', 'max:80',
+            ],
             'paid_on' => ['required', 'date', 'before_or_equal:today'],
             'note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'reference.required' => 'A transaction reference is required for this payment method. '
+                .'Take it from the bank slip or mobile-money message the family brought in.',
+        ], [
+            'reference' => 'transaction reference',
         ]);
 
         // Resolved through the scoped query: an invoice from another school
@@ -138,6 +159,7 @@ class FinanceController extends Controller
         return view('finance.receipt', [
             'payment' => $payment,
             'school' => $request->user()->school,
+            'verifyCode' => app(DocumentCode::class)->forDocument('receipt', $payment->receipt_number),
         ]);
     }
 

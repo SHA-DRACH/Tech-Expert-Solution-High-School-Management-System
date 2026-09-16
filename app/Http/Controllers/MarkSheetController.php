@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesMarkingScope;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\AssessmentScore;
@@ -39,6 +40,8 @@ use Illuminate\View\View;
  */
 class MarkSheetController extends Controller
 {
+    use ResolvesMarkingScope;
+
     public function index(Request $request, Gradebook $gradebook): View
     {
         $user = $request->user();
@@ -60,7 +63,9 @@ class MarkSheetController extends Controller
 
         // A teacher sees the classes they teach; the academic office sees all.
         $teacher = $user->teacherProfile;
-        $restricted = $teacher !== null && ! $user->hasPermission('grades.approve');
+        // Restricted unless they hold office-wide authority. Having no teacher
+        // record narrows an account to nothing - it must never widen it to all.
+        $restricted = ! $user->hasPermission('grades.approve');
 
         $sections = $this->sectionsFor($teacher, $restricted);
         $section = $request->integer('section')
@@ -216,75 +221,6 @@ class MarkSheetController extends Controller
     }
 
     /* ------------------------------------------------------------ helpers */
-
-    /** Classes this person may mark. */
-    protected function sectionsFor(?Teacher $teacher, bool $restricted): Collection
-    {
-        $query = Section::with('schoolClass');
-
-        if ($restricted) {
-            $query->whereIn('id', TeachingAssignment::where('teacher_id', $teacher->id)->pluck('section_id'));
-        }
-
-        return $query->get()->sortBy(fn (Section $s) => $s->full_name)->values();
-    }
-
-    /**
-     * Subjects taught to this class.
-     *
-     * Drawn from the class's own subject list, which is what decides whether a
-     * student "does" a subject - there is no per-student subject choice, so
-     * everyone in the class takes everything attached to it.
-     */
-    protected function subjectsFor(Section $section, ?Teacher $teacher, bool $restricted): Collection
-    {
-        $ids = $section->schoolClass?->subjects()->pluck('subjects.id') ?? collect();
-
-        if ($restricted) {
-            $ids = $ids->intersect(
-                TeachingAssignment::where('teacher_id', $teacher->id)
-                    ->where('section_id', $section->id)
-                    ->pluck('subject_id')
-            );
-        }
-
-        return Subject::whereIn('id', $ids)->orderBy('name')->get();
-    }
-
-    /**
-     * The students in this class who take this subject.
-     *
-     * Not simply the class roster. A grade may offer a subject to only some of
-     * its students, and listing all thirty against an elective six of them take
-     * invites a mark being entered against a child who never sat the paper.
-     *
-     * @return \Illuminate\Database\Eloquent\Collection<int, Student>
-     */
-    protected function roster(Section $section, ?Subject $subject = null)
-    {
-        return Student::inSection($section->id)
-            ->where('status', 'active')
-            ->when($subject, fn ($query) => $query->where(function ($outer) use ($subject) {
-                $outer
-                    ->whereHas('subjects', fn ($related) => $related->where('subjects.id', $subject->id))
-                    /*
-                     | A student with no subjects recorded at all still appears.
-                     |
-                     | Filtering on the pivot alone would make anyone whose
-                     | subjects were never recorded - an older record, a CSV
-                     | import, a row written straight to the database - vanish
-                     | from every mark sheet in the school, silently and with no
-                     | error to explain it. Absence of a record is not evidence
-                     | that a child takes nothing, so it falls back to what the
-                     | system inferred before this table existed: everything
-                     | their class offers.
-                     */
-                    ->orWhereDoesntHave('subjects');
-            }))
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
-    }
 
     /** score keyed as "assessmentId.studentId", for a flat lookup in the view. */
     protected function scoreMap(Collection $assessments, $students): Collection

@@ -57,4 +57,16 @@ class Money
     {
         return (int) round(((float) $major) * 100);
     }
+
+    /**
+     * The inverse, for putting a stored amount back into a number input.
+     *
+     * Deliberately not `format()`: that adds thousand separators, and a
+     * `<input type="number">` holding "5,000.00" is an input the browser reads
+     * as empty. The value here is plain and machine-readable - "5000.00".
+     */
+    public static function toMajor(int|float|null $minor): string
+    {
+        return number_format(((int) $minor) / 100, 2, '.', '');
+    }
 }

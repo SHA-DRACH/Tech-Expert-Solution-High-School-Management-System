@@ -9,6 +9,12 @@
                 <x-ui.button :href="route('gradebook.student', $student)" variant="secondary">Results</x-ui.button>
             @endcan
 
+            {{-- The counter work: what the school holds on this child, and a
+                 sheet that prints. --}}
+            <x-ui.button :href="route('documents.index', ['search' => $student->student_number])" variant="secondary">Documents</x-ui.button>
+
+            <x-ui.button :href="route('students.record', $student)" variant="secondary">Print record</x-ui.button>
+
             @can('update', $student)
                 <x-ui.button :href="route('students.edit', $student)">Edit record</x-ui.button>
             @endcan
@@ -42,14 +48,97 @@
                         <p class="text-xs text-slate-500">
                             {{ $guardian->pivot->relationship }}{{ $guardian->phone ? ' · '.$guardian->phone : '' }}
                         </p>
+
+                        {{-- What this parent may actually see. Left implicit,
+                             it is the setting nobody checks until a parent
+                             reads something they should not have. --}}
+                        @php
+                            $sees = collect([
+                                $guardian->pivot->can_view_academics ? 'results' : null,
+                                $guardian->pivot->can_view_finance ? 'fees' : null,
+                            ])->filter();
+                        @endphp
+                        <p class="mt-0.5 text-[11px] text-slate-400">
+                            {{ $sees->isEmpty() ? 'Cannot see results or fees' : 'Can see '.$sees->join(' and ') }}
+                        </p>
                     </div>
-                    @if ($guardian->pivot->is_primary)
-                        <x-ui.badge tone="info">Primary</x-ui.badge>
-                    @endif
+
+                    <div class="flex shrink-0 items-center gap-2">
+                        @if ($guardian->pivot->is_primary)
+                            <x-ui.badge tone="info">Primary</x-ui.badge>
+                        @endif
+
+                        @can('update', $student)
+                            <form method="POST" action="{{ route('students.guardians.detach', [$student, $guardian]) }}"
+                                  onsubmit="return confirm('Unlink this parent from the student?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-xs text-slate-400 transition hover:text-rose-600">Unlink</button>
+                            </form>
+                        @endcan
+                    </div>
                 </div>
             @empty
                 <x-ui.empty-state icon="❋" title="No guardian linked" description="Link a parent or guardian to this student." />
             @endforelse
+
+            @can('update', $student)
+                @php
+                    // Only guardians not already linked; offering one twice is
+                    // an action that can only fail.
+                    $linkable = $guardians->whereNotIn('id', $student->guardians->pluck('id'));
+                @endphp
+
+                <div class="border-t border-slate-100 px-5 py-4">
+                    @if ($linkable->isEmpty())
+                        <p class="text-xs text-slate-500">
+                            Every parent on record is already linked to this student.
+                            <a href="{{ route('guardians.index') }}" class="font-medium underline underline-offset-2">Add a parent</a>
+                            to link a new one.
+                        </p>
+                    @else
+                        <form method="POST" action="{{ route('students.guardians.attach', $student) }}" class="space-y-3">
+                            @csrf
+
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Link a parent or guardian</p>
+
+                            <x-ui.field label="Parent or guardian" name="guardian_id" required>
+                                <x-ui.select name="guardian_id" placeholder="Select a parent"
+                                             :options="$linkable->mapWithKeys(fn ($g) => [
+                                                 $g->id => $g->full_name.($g->phone ? ' · '.$g->phone : ''),
+                                             ])->all()" />
+                            </x-ui.field>
+
+                            <x-ui.field label="Relationship" name="relationship" required>
+                                <x-ui.input name="relationship" value="Guardian" required
+                                            placeholder="Mother, father, uncle..." />
+                            </x-ui.field>
+
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" name="is_primary" value="1"
+                                           class="rounded border-slate-300 text-brand focus:ring-brand">
+                                    Primary contact — the first person the school rings
+                                </label>
+
+                                <label class="flex items-center gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" name="can_view_academics" value="1" checked
+                                           class="rounded border-slate-300 text-brand focus:ring-brand">
+                                    May see results and attendance
+                                </label>
+
+                                <label class="flex items-center gap-2 text-xs text-slate-600">
+                                    <input type="checkbox" name="can_view_finance" value="1" checked
+                                           class="rounded border-slate-300 text-brand focus:ring-brand">
+                                    May see fees and payments
+                                </label>
+                            </div>
+
+                            <x-ui.button type="submit" size="sm" class="w-full">Link parent</x-ui.button>
+                        </form>
+                    @endif
+                </div>
+            @endcan
         </x-ui.card>
     </div>
 

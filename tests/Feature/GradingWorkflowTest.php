@@ -323,7 +323,9 @@ class GradingWorkflowTest extends TestCase
             'Well done. Keep it up.',               // principal comment
             'Class teacher',                        // signature line
         ] as $expected) {
-            $this->assertStringContainsString($expected, $html, "The card should show: {$expected}");
+            // Escaped, as the page prints it: a generated school name such as
+            // "O'Kon Ltd" used to make this test fail at random.
+            $this->assertStringContainsString(e($expected), $html, "The card should show: {$expected}");
         }
     }
 

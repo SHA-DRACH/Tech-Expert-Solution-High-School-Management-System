@@ -51,6 +51,21 @@
             />
         </div>
 
+        {{-- The child's week: what they have, when, and with whom. --}}
+        @if ($summary['canViewAcademics'])
+            <x-ui.card class="mt-6" :title="Str::before($child->full_name, ' ').'\'s week'"
+                       :description="($summary['class'] ? $summary['class'].' · ' : '').'Today is highlighted, and so is the lesson happening now.'">
+                <x-slot:actions>
+                    @if ($week->isNotEmpty())
+                        <x-ui.button :href="route('parent.schedule.download', ['child' => $child->id])" variant="ghost" size="sm">Download</x-ui.button>
+                    @endif
+                    <x-ui.button :href="route('parent.schedule', ['child' => $child->id])" variant="ghost" size="sm">Open</x-ui.button>
+                </x-slot:actions>
+
+                <x-schedule.week :week="$week" :days="$days" />
+            </x-ui.card>
+        @endif
+
         <div class="mt-6 grid gap-6 lg:grid-cols-3">
             {{-- Recent grades --}}
             <x-ui.card class="lg:col-span-2" title="Recent grades" description="Only marks the school has approved" :padded="false">

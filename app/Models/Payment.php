@@ -14,6 +14,17 @@ class Payment extends Model
 
     public const METHODS = ['Cash', 'Mobile money', 'Bank transfer', 'Cheque', 'Other'];
 
+    /**
+     * Methods where the money moved somewhere the school cannot see.
+     *
+     * Cash is handed over the counter and the receipt is the proof. A bank
+     * transfer, a mobile-money payment or a cheque happened elsewhere, and the
+     * only thing tying it to this school is the slip the family brings in — so
+     * that reference is required, not optional. Recording one without it is
+     * recording a payment nobody can later trace.
+     */
+    public const METHODS_NEEDING_PROOF = ['Mobile money', 'Bank transfer', 'Cheque'];
+
     protected string $auditModule = 'Finance';
 
     protected $fillable = [

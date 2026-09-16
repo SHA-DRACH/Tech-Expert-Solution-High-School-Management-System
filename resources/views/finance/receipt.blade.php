@@ -9,7 +9,7 @@
     </div>
 
     {{-- Kept deliberately plain so it prints cleanly on any printer. --}}
-    <div class="mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm print:border-0 print:shadow-none">
+    <div class="printable mx-auto max-w-2xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm print:border-0 print:shadow-none">
         <div class="flex items-start justify-between gap-4 border-b border-slate-200 pb-6">
             <div class="flex items-center gap-3">
                 @if ($school?->logo_path)
@@ -77,6 +77,20 @@
                 <p class="text-xs text-slate-500">Received by</p>
                 <p class="mt-1 text-sm font-medium text-slate-900">{{ $payment->receivedBy?->name ?? '—' }}</p>
             </div>
+
+            {{--
+                The code points at a verification page, not at the receipt's
+                contents. A printed receipt is only a claim that money was paid;
+                this is what lets whoever holds it check that claim against the
+                school's own records. Encoding the amount into the code would
+                just be the same unverifiable claim in a second alphabet.
+            --}}
+            @if ($verifyCode)
+                <div class="text-center">
+                    <div class="inline-block">{!! $verifyCode !!}</div>
+                    <p class="mt-1 text-[10px] leading-tight text-slate-500">Scan to verify</p>
+                </div>
+            @endif
 
             <div class="text-right">
                 <div class="h-10 w-40 border-b border-slate-300"></div>

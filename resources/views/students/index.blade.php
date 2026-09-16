@@ -4,7 +4,7 @@
     <x-ui.page-header title="Students" description="Every student record in this school.">
         <x-slot:actions>
             @can('students.export')
-                <x-ui.button :href="route('exports.students', request()->only('search', 'status'))" variant="secondary">
+                <x-ui.button :href="route('exports.students', request()->only('search', 'status', 'class'))" variant="secondary">
                     Export CSV
                 </x-ui.button>
             @endcan
@@ -39,9 +39,19 @@
                 />
             </div>
 
+            <div class="w-44">
+                <label for="class" class="sr-only">Filter by class</label>
+                <x-ui.select
+                    name="class"
+                    :selected="$filters['class']"
+                    placeholder="All classes"
+                    :options="$classes->pluck('name', 'id')->all()"
+                />
+            </div>
+
             <x-ui.button type="submit" variant="secondary">Filter</x-ui.button>
 
-            @if ($filters['search'] || $filters['status'])
+            @if (array_filter($filters))
                 <x-ui.button :href="route('students.index')" variant="ghost">Clear</x-ui.button>
             @endif
         </form>
@@ -49,8 +59,8 @@
         @if ($students->isEmpty())
             <x-ui.empty-state
                 icon="◉"
-                title="{{ $filters['search'] || $filters['status'] ? 'No students match those filters' : 'No students yet' }}"
-                description="{{ $filters['search'] || $filters['status'] ? 'Try a different search term or clear the filters.' : 'Students appear here once an admission is approved, or when you add one directly.' }}"
+                title="{{ array_filter($filters) ? 'No students match those filters' : 'No students yet' }}"
+                description="{{ array_filter($filters) ? 'Try a different search term or clear the filters.' : 'Students appear here once an admission is approved, or when you add one directly.' }}"
             >
                 @can('create', App\Models\Student::class)
                     <x-ui.button :href="route('students.create')">Add the first student</x-ui.button>

@@ -10,8 +10,8 @@ use App\Models\AssessmentScore;
 use App\Models\AssignmentSubmission;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
-use App\Models\Guardian;
 use App\Models\GradeScale;
+use App\Models\Guardian;
 use App\Models\Invoice;
 use App\Models\ParentRequest;
 use App\Models\Payment;
@@ -19,12 +19,16 @@ use App\Models\ReportCard;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\Term;
+use App\Services\ClassSchedule;
 use App\Services\Gradebook;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The parent portal.
@@ -38,7 +42,7 @@ class ParentPortalController extends Controller
     public function dashboard(Request $request): View
     {
         $guardian = $this->guardian($request);
-        $children = $guardian->students()->with('currentEnrollment.section.schoolClass')->get();
+        $children = $this->children($guardian);
         $child = $this->selectedChild($request, $children);
 
         return view('portals.parent.dashboard', [
@@ -50,13 +54,53 @@ class ParentPortalController extends Controller
             'events' => Event::upcoming()->limit(4)->get(),
             'recentGrades' => $child ? $this->recentGrades($guardian, $child, 5) : collect(),
             'openRequests' => $guardian->requests()->whereIn('status', ['open', 'in_progress'])->count(),
+            'week' => $week = $this->scheduleFor($guardian, $child),
+            'days' => app(ClassSchedule::class)->days($week),
         ]);
+    }
+
+    /** A child's weekly class schedule: day, time, subject and teacher. */
+    public function schedule(Request $request): View
+    {
+        $guardian = $this->guardian($request);
+        $children = $this->children($guardian);
+        $child = $this->selectedChild($request, $children);
+
+        abort_unless($child !== null, 404);
+        $this->authorizeSchedule($guardian, $child);
+
+        $week = $this->scheduleFor($guardian, $child);
+
+        return view('portals.parent.schedule', [
+            'guardian' => $guardian,
+            'children' => $children,
+            'child' => $child,
+            'week' => $week,
+            'days' => app(ClassSchedule::class)->days($week),
+        ]);
+    }
+
+    public function downloadSchedule(Request $request): StreamedResponse
+    {
+        $guardian = $this->guardian($request);
+        $child = $this->selectedChild($request, $this->children($guardian));
+
+        abort_unless($child !== null, 404);
+        $this->authorizeSchedule($guardian, $child);
+
+        $book = app(ClassSchedule::class)->workbook($child, $request->user()->school);
+
+        return response()->streamDownload(
+            fn () => IOFactory::createWriter($book, 'Xlsx')->save('php://output'),
+            Str::slug('class-schedule-'.$child->full_name).'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
     }
 
     public function grades(Request $request): View
     {
         $guardian = $this->guardian($request);
-        $children = $guardian->students()->get();
+        $children = $this->children($guardian);
         $child = $this->selectedChild($request, $children);
 
         abort_unless($child !== null, 404);
@@ -105,7 +149,7 @@ class ParentPortalController extends Controller
     public function assignments(Request $request): View
     {
         $guardian = $this->guardian($request);
-        $children = $guardian->students()->get();
+        $children = $this->children($guardian);
         $child = $this->selectedChild($request, $children);
 
         abort_unless($child !== null, 404);
@@ -139,7 +183,7 @@ class ParentPortalController extends Controller
     public function attendance(Request $request): View
     {
         $guardian = $this->guardian($request);
-        $children = $guardian->students()->get();
+        $children = $this->children($guardian);
         $child = $this->selectedChild($request, $children);
 
         abort_unless($child !== null, 404);
@@ -162,7 +206,7 @@ class ParentPortalController extends Controller
     public function fees(Request $request): View
     {
         $guardian = $this->guardian($request);
-        $children = $guardian->students()->get();
+        $children = $this->children($guardian);
         $child = $this->selectedChild($request, $children);
 
         abort_unless($child !== null, 404);
@@ -184,7 +228,7 @@ class ParentPortalController extends Controller
     public function teachers(Request $request): View
     {
         $guardian = $this->guardian($request);
-        $children = $guardian->students()->get();
+        $children = $this->children($guardian);
         $child = $this->selectedChild($request, $children);
 
         $teachers = Teacher::query()
@@ -208,7 +252,7 @@ class ParentPortalController extends Controller
 
         return view('portals.parent.requests', [
             'guardian' => $guardian,
-            'children' => $guardian->students()->get(),
+            'children' => $this->children($guardian),
             'requests' => $guardian->requests()->with('student')->latest()->paginate(15),
             'types' => ParentRequest::TYPES,
         ]);
@@ -247,6 +291,36 @@ class ParentPortalController extends Controller
     }
 
     /* ------------------------------------------------------------------ */
+
+    /**
+     * Where a child is, hour by hour, is guarded like their results: a parent
+     * the school has not cleared for this child's academic records does not
+     * get a map of their school day either.
+     */
+    protected function authorizeSchedule(Guardian $guardian, Student $child): void
+    {
+        abort_unless($guardian->canViewAcademicsFor($child), 403, 'You are not cleared to view this child\'s school records.');
+    }
+
+    protected function scheduleFor(Guardian $guardian, ?Student $child): Collection
+    {
+        return $child && $guardian->canViewAcademicsFor($child)
+            ? app(ClassSchedule::class)->week($child)
+            : collect();
+    }
+
+    /**
+     * The guardian's children, with their class already loaded.
+     *
+     * Every page reads the child's class sooner or later. Fetching it here,
+     * once, is what stops a page 500ing for a parent with more than one child:
+     * Laravel only refuses a lazy load when the model came from a list of
+     * several, so a single-child parent - and every test - never saw it.
+     */
+    protected function children(Guardian $guardian): Collection
+    {
+        return $guardian->students()->with('currentEnrollment.section.schoolClass')->get();
+    }
 
     protected function guardian(Request $request): Guardian
     {

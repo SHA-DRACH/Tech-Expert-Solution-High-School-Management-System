@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Scholarship;
 use App\Models\Student;
 use App\Services\SchoolSettings;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,18 @@ class RaiseInvoices
         $created = 0;
         $skipped = 0;
 
-        DB::transaction(function () use ($structure, $students, $dueOn, &$created, &$skipped) {
+        /*
+         | Awards are loaded once and matched in memory. A scholarship is a
+         | standing decision, so it has to be applied at the moment fees are
+         | raised - a family told they hold a half-fee award and then handed a
+         | full bill has been told two different things by the same school.
+         */
+        $awards = Scholarship::active()
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get()
+            ->groupBy('student_id');
+
+        DB::transaction(function () use ($structure, $students, $dueOn, $awards, &$created, &$skipped) {
             $total = $structure->items->sum('amount_minor');
 
             foreach ($students as $student) {
@@ -56,6 +68,12 @@ class RaiseInvoices
                     continue;
                 }
 
+                $discount = $this->discountFor(
+                    $awards->get($student->id) ?? collect(),
+                    $structure,
+                    $total
+                );
+
                 $invoice = Invoice::create([
                     'school_id' => $structure->school_id,
                     'student_id' => $student->id,
@@ -65,8 +83,9 @@ class RaiseInvoices
                     'issued_on' => now()->toDateString(),
                     'due_on' => $dueOn,
                     'total_minor' => $total,
-                    'status' => 'issued',
-                    'note' => $structure->name,
+                    'discount_minor' => $discount['minor'],
+                    'status' => $discount['minor'] >= $total ? 'paid' : 'issued',
+                    'note' => trim($structure->name.' '.$discount['note']),
                 ]);
 
                 foreach ($structure->items as $item) {
@@ -84,6 +103,36 @@ class RaiseInvoices
         });
 
         return ['created' => $created, 'skipped' => $skipped];
+    }
+
+    /**
+     * What a student's awards take off this bill.
+     *
+     * Several awards can stack - a sponsor's bursary alongside a staff-child
+     * discount is ordinary - but never past the value of the bill, or the
+     * balance goes negative and reads as the school owing the family money.
+     *
+     * @param  \Illuminate\Support\Collection<int, Scholarship>  $awards
+     * @return array{minor: int, note: string}
+     */
+    protected function discountFor($awards, FeeStructure $structure, int $total): array
+    {
+        $applicable = $awards->filter(fn (Scholarship $award) => $award->appliesTo(
+            $structure->academic_year_id,
+            $structure->term_id,
+        ));
+
+        if ($applicable->isEmpty()) {
+            return ['minor' => 0, 'note' => ''];
+        }
+
+        $discount = min($total, $applicable->sum(fn (Scholarship $award) => $award->discountOn($total)));
+
+        // Named on the invoice, because "why is this bill smaller?" is the
+        // first question anyone asks of a discounted one.
+        $note = '(scholarship: '.$applicable->pluck('name')->implode(', ').')';
+
+        return ['minor' => (int) $discount, 'note' => $note];
     }
 
     /**

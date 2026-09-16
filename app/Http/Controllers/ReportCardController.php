@@ -7,6 +7,7 @@ use App\Models\ReportCard;
 use App\Models\Section;
 use App\Models\Term;
 use App\Services\AuditLogger;
+use App\Services\DocumentCode;
 use App\Services\Notifier;
 use App\Services\SchoolSettings;
 use App\Services\StudentAccess;
@@ -91,6 +92,7 @@ class ReportCardController extends Controller
         return view('reportcards.show', [
             'card' => $reportCard,
             'school' => $request->user()->school,
+            'verifyCode' => $this->verifyCode($reportCard),
         ]);
     }
 
@@ -222,6 +224,7 @@ class ReportCardController extends Controller
             'card' => $reportCard,
             'school' => $request->user()->school,
             'settings' => $settings->all(),
+            'verifyCode' => $this->verifyCode($reportCard),
         ])->render();
 
         $name = Str::slug(
@@ -234,5 +237,22 @@ class ReportCardController extends Controller
             'Content-Type' => 'text/html; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="'.$name.'.html"',
         ]);
+    }
+
+    /**
+     * The QR code for this card, or null while it is still a draft.
+     *
+     * A draft is not a document yet - it can still change, and it is not
+     * visible to the family - so printing a verification code on one would be
+     * promising that a scanner can confirm something the school has not
+     * actually issued. The public check only recognises published cards.
+     */
+    protected function verifyCode(ReportCard $card): ?string
+    {
+        if ($card->status !== 'published') {
+            return null;
+        }
+
+        return app(DocumentCode::class)->forDocument('report-card', (string) $card->getKey());
     }
 }

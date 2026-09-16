@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\SetUpPeriods;
 use App\Models\AcademicYear;
 use App\Models\Term;
 use App\Services\AuditLogger;
@@ -31,7 +32,7 @@ class AcademicCalendarController extends Controller
 
         return view('settings.academic-years', [
             'school' => $context->school(),
-            'years' => AcademicYear::with('terms')
+            'years' => AcademicYear::with(['terms', 'semesters'])
                 ->withCount(['terms', 'enrollments'])
                 ->orderByDesc('starts_on')
                 ->get(),
@@ -40,11 +41,12 @@ class AcademicCalendarController extends Controller
 
     /* ----------------------------------------------------------- the year */
 
-    public function storeYear(Request $request, AuditLogger $audit): RedirectResponse
+    public function storeYear(Request $request, AuditLogger $audit, SetUpPeriods $periods): RedirectResponse
     {
         $this->authorizeCalendar();
 
         $data = $this->validateYear($request);
+        unset($data['periods']);
 
         $year = AcademicYear::create($data + ['is_current' => false]);
 
@@ -56,6 +58,14 @@ class AcademicCalendarController extends Controller
         }
 
         $audit->log('created', 'Academics', "Academic year {$year->name} was created.", $year);
+
+        // Six periods in two semesters, laid out in the same step, so a new year
+        // is ready for marks the moment it exists.
+        if ($request->boolean('periods')) {
+            $periods->handle($year->fresh());
+
+            return back()->with('status', "Academic year {$year->name} was created with six periods in two semesters. Set each period's dates below.");
+        }
 
         return back()->with('status', "Academic year {$year->name} was created.");
     }
@@ -150,7 +160,10 @@ class AcademicCalendarController extends Controller
         $this->authorizeCalendar();
         $this->assertOwned($academicYear);
 
+        $this->nameAsPeriod($request, $academicYear);
+
         $data = $this->validateTerm($request, $academicYear);
+        $data += $this->semesterFields($academicYear, (int) $data['sequence']);
 
         $term = $academicYear->terms()->create($data + [
             'school_id' => $academicYear->school_id,
@@ -173,7 +186,10 @@ class AcademicCalendarController extends Controller
         $this->authorizeCalendar();
         $this->assertOwned($term);
 
+        $this->nameAsPeriod($request, $term->academicYear);
+
         $data = $this->validateTerm($request, $term->academicYear, $term);
+        $data += $this->semesterFields($term->academicYear, (int) $data['sequence']);
 
         $original = $term->only(array_keys($data));
 
@@ -230,6 +246,33 @@ class AcademicCalendarController extends Controller
     }
 
     /* ------------------------------------------------------------ helpers */
+
+    /**
+     * In a year kept in periods, a period is named by its number.
+     *
+     * "3rd period" is not something to type: a hand-typed name would drift
+     * from the number the grade sheet and the averages go by, so the name is
+     * written from the number and the semester worked out from it.
+     */
+    protected function nameAsPeriod(Request $request, AcademicYear $year): void
+    {
+        if ($year->usesPeriods() && $request->filled('sequence')) {
+            $request->merge(['name' => ucfirst(Term::periodName((int) $request->input('sequence')))]);
+        }
+    }
+
+    /** @return array<string, int> */
+    protected function semesterFields(AcademicYear $year, int $number): array
+    {
+        if (! $year->usesPeriods()) {
+            return [];
+        }
+
+        $semester = Term::semesterForPeriod($number);
+        app(SetUpPeriods::class)->semester($year, $semester);
+
+        return ['semester' => $semester];
+    }
 
     protected function authorizeCalendar(): void
     {

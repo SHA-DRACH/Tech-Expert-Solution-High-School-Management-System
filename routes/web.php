@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AcademicCalendarController;
+use App\Http\Controllers\AcademicPeriodController;
 use App\Http\Controllers\AcademicsController;
 use App\Http\Controllers\AdmissionController;
 use App\Http\Controllers\AnnouncementController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentVerificationController;
 use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExpenseController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\ExaminationController;
 use App\Http\Controllers\FeeStructureController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\GradeApprovalController;
+use App\Http\Controllers\GradeSheetController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\GradebookController;
 use App\Http\Controllers\GuardianController;
@@ -35,12 +38,15 @@ use App\Http\Controllers\Portal\StudentPortalController;
 use App\Http\Controllers\Portal\TeacherPortalController;
 use App\Http\Controllers\PortalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProgressReportController;
 use App\Http\Controllers\PublicAdmissionController;
 use App\Http\Controllers\PublicSchoolController;
 use App\Http\Controllers\ReportCardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RegistrarController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SchoolSettingsController;
+use App\Http\Controllers\ScholarshipController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentPermissionController;
 use App\Http\Controllers\SubjectController;
@@ -74,6 +80,16 @@ Route::get('/events', [PublicSchoolController::class, 'events'])->name('public.e
 Route::get('/apply', [PublicAdmissionController::class, 'create'])->name('apply');
 Route::post('/apply', [PublicAdmissionController::class, 'store'])->middleware('throttle:5,1')->name('apply.store');
 Route::get('/apply/complete', [PublicAdmissionController::class, 'complete'])->name('apply.complete');
+
+/*
+| Where a scanned QR code lands. Public on purpose: the person checking a
+| receipt is usually a parent at a counter with no account here. The controller
+| decides what is safe to show — enough to confirm the paper in your hand,
+| nothing you could not already read off it.
+*/
+Route::get('/verify/{type}/{reference}', DocumentVerificationController::class)
+    ->middleware('throttle:30,1')
+    ->name('verify.document');
 
 /*
 |--------------------------------------------------------------------------
@@ -147,6 +163,10 @@ Route::middleware(['auth', 'school.context'])->group(function () {
         Route::get('/attendance', [ParentPortalController::class, 'attendance'])->name('attendance');
         Route::get('/fees', [ParentPortalController::class, 'fees'])->name('fees');
         Route::get('/teachers', [ParentPortalController::class, 'teachers'])->name('teachers');
+        Route::get('/schedule', [ParentPortalController::class, 'schedule'])->name('schedule');
+        Route::get('/grade-sheet', [ProgressReportController::class, 'parentGradeSheet'])->name('gradesheet');
+        Route::get('/progress-report', [ProgressReportController::class, 'parentReportCard'])->name('progress');
+        Route::get('/schedule/download', [ParentPortalController::class, 'downloadSchedule'])->name('schedule.download');
         Route::get('/requests', [ParentPortalController::class, 'requests'])->name('requests');
         Route::post('/requests', [ParentPortalController::class, 'storeRequest'])->name('requests.store');
     });
@@ -156,6 +176,9 @@ Route::middleware(['auth', 'school.context'])->group(function () {
         Route::get('/grades', [StudentPortalController::class, 'grades'])->name('grades');
         Route::get('/attendance', [StudentPortalController::class, 'attendance'])->name('attendance');
         Route::get('/timetable', [StudentPortalController::class, 'timetable'])->name('timetable');
+        Route::get('/timetable/download', [StudentPortalController::class, 'downloadTimetable'])->name('timetable.download');
+        Route::get('/grade-sheet', [ProgressReportController::class, 'studentGradeSheet'])->name('gradesheet');
+        Route::get('/progress-report', [ProgressReportController::class, 'studentReportCard'])->name('progress');
 
         // Assignments: viewing and submitting are separately switchable.
         Route::get('/assignments', [StudentAssignmentController::class, 'index'])->name('assignments');
@@ -196,6 +219,22 @@ Route::middleware(['auth', 'school.context'])->group(function () {
     /* ---------------------------------------------------------------- */
     /* Students and families                                            */
     /* ---------------------------------------------------------------- */
+
+    /*
+    | The registrar's desk. Gathers work that already existed across six
+    | modules; every action re-checks the permission of the module behind it,
+    | so nothing here widens what anyone can reach.
+    */
+    Route::middleware('permission:students.view')->group(function () {
+        Route::get('/registrar', [RegistrarController::class, 'index'])->name('registrar.index');
+        Route::get('/students/{student}/record', [RegistrarController::class, 'record'])->name('students.record');
+    });
+
+    Route::middleware('permission:students.update')->group(function () {
+        Route::post('/students/{student}/guardians', [RegistrarController::class, 'attachGuardian'])->name('students.guardians.attach');
+        Route::put('/students/{student}/guardians/{guardian}', [RegistrarController::class, 'updateGuardian'])->name('students.guardians.update');
+        Route::delete('/students/{student}/guardians/{guardian}', [RegistrarController::class, 'detachGuardian'])->name('students.guardians.detach');
+    });
 
     Route::middleware('permission:students.view')->group(function () {
         Route::get('/students', [StudentController::class, 'index'])->name('students.index');
@@ -411,6 +450,42 @@ Route::middleware(['auth', 'school.context'])->group(function () {
         Route::get('/gradebook/students/{student}', [GradebookController::class, 'show'])->name('gradebook.student');
     });
 
+    /*
+    | The period grade sheet. Outside a permission group because two different
+    | permissions open it - grades.enter for a teacher, grades.approve for the
+    | academic office - and the controller narrows a teacher to the classes
+    | they teach. Download and upload each need their own permission as well.
+    */
+    Route::get('/grade-sheet', [GradeSheetController::class, 'index'])->name('gradesheet.index');
+    Route::post('/grade-sheet', [GradeSheetController::class, 'store'])->name('gradesheet.store');
+    Route::post('/grade-sheet/submit', [GradeSheetController::class, 'submit'])->name('gradesheet.submit');
+    Route::get('/grade-sheet/download', [GradeSheetController::class, 'download'])->name('gradesheet.download');
+    Route::post('/grade-sheet/upload', [GradeSheetController::class, 'upload'])
+        ->middleware('throttle:20,1')
+        ->name('gradesheet.upload');
+    Route::get('/grade-sheet/year', [GradeSheetController::class, 'summary'])->name('gradesheet.summary');
+
+    /*
+    | The printed documents: a grade sheet per period, the periodic progress
+    | report at year end. reportcards.view, checked in the controller, which
+    | also decides who may record conduct (the class sponsor or the office).
+    */
+    Route::get('/progress-reports', [ProgressReportController::class, 'index'])->name('progress.index');
+    Route::get('/progress-reports/{section}/grade-sheets', [ProgressReportController::class, 'classGradeSheets'])->name('progress.grade-sheets');
+    Route::get('/progress-reports/{section}/report-cards', [ProgressReportController::class, 'classReportCards'])->name('progress.report-cards');
+    Route::post('/progress-reports/{section}/conduct', [ProgressReportController::class, 'storeConduct'])->name('progress.conduct');
+
+    /*
+    | Periods, semesters and the exam-entry switch. Three authorities, checked
+    | in the controller: academics.view to look, academics.manage to change
+    | dates, grades.exam_entry to open exam marks to teachers.
+    */
+    Route::get('/academic-periods', [AcademicPeriodController::class, 'index'])->name('periods.index');
+    Route::post('/academic-periods/{academicYear}/setup', [AcademicPeriodController::class, 'setup'])->name('periods.setup');
+    Route::put('/academic-periods/{term}', [AcademicPeriodController::class, 'updatePeriod'])->name('periods.update');
+    Route::put('/semesters/{semester}', [AcademicPeriodController::class, 'updateSemester'])->name('semesters.update');
+    Route::patch('/semesters/{semester}/exam-entry', [AcademicPeriodController::class, 'examEntry'])->name('semesters.exam-entry');
+
     Route::middleware('permission:grades.approve')->group(function () {
         Route::put('/gradebook/scores/{score}', [GradebookController::class, 'updateScore'])->name('gradebook.scores.update');
         Route::delete('/gradebook/scores/{score}', [GradebookController::class, 'destroyScore'])->name('gradebook.scores.destroy');
@@ -484,6 +559,15 @@ Route::middleware(['auth', 'school.context'])->group(function () {
         Route::get('/admission-applications/{admission}', [AdmissionController::class, 'show'])->name('admissions.show');
         Route::get('/admission-applications/documents/{document}/download', [AdmissionController::class, 'downloadDocument'])
             ->name('admissions.documents.download');
+
+        /*
+        | Behind admissions.view rather than a permission of its own: anyone
+        | trusted to read an application is trusted to print the offer it
+        | resulted in. The controller refuses any status but approved or
+        | enrolled.
+        */
+        Route::get('/admission-applications/{admission}/letter', [AdmissionController::class, 'letter'])
+            ->name('admissions.letter');
     });
 
     Route::patch('/admission-applications/{admission}', [AdmissionController::class, 'update'])
@@ -507,6 +591,26 @@ Route::middleware(['auth', 'school.context'])->group(function () {
     Route::middleware('permission:payments.record')->group(function () {
         Route::get('/payments/create', [FinanceController::class, 'createPayment'])->name('payments.create');
         Route::post('/payments', [FinanceController::class, 'storePayment'])->name('payments.store');
+    });
+
+    /*
+    | Scholarships. Reading who holds one is a wider permission than granting
+    | one: a registrar and a principal both need the list, but only finance
+    | decides what the school stops collecting.
+    */
+    Route::get('/scholarships', [ScholarshipController::class, 'index'])
+        ->middleware('permission:scholarships.view')
+        ->name('scholarships.index');
+
+    Route::middleware('permission:scholarships.manage')->group(function () {
+        Route::get('/scholarships/create', [ScholarshipController::class, 'create'])->name('scholarships.create');
+        Route::post('/scholarships', [ScholarshipController::class, 'store'])->name('scholarships.store');
+        Route::get('/scholarships/{scholarship}/edit', [ScholarshipController::class, 'edit'])->name('scholarships.edit');
+        Route::put('/scholarships/{scholarship}', [ScholarshipController::class, 'update'])->name('scholarships.update');
+
+        // Ended, not deleted - the invoices it discounted still have to be
+        // explainable.
+        Route::patch('/scholarships/{scholarship}/end', [ScholarshipController::class, 'end'])->name('scholarships.end');
     });
 
     /* ---------------------------------------------------------------- */

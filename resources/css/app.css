@@ -402,3 +402,48 @@
     .zoom-frame:hover img { transform: none; }
     .hero .swiper-slide .hero-content > * { opacity: 1; transform: none; }
 }
+
+/*
+ | Printing a document, not the application around it.
+ |
+ | A receipt lives inside the ordinary signed-in shell, so printing it used to
+ | put the sidebar, the header, the breadcrumbs and the assistant button on the
+ | paper alongside it. Hiding each of those by hand meant remembering every one,
+ | and forgetting a new one was invisible until somebody printed.
+ |
+ | So the rule is inverted: everything is hidden, and only what is marked
+ | `printable` comes back. `visibility` rather than `display` because the
+ | printable element is nested deep inside the shell — collapsing its ancestors
+ | would take it with them.
+ */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .printable,
+    .printable * {
+        visibility: visible;
+    }
+
+    .printable {
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+    }
+
+    /* Anything inside the document that is only useful on screen. */
+    .printable .print\:hidden,
+    .print-hide {
+        display: none !important;
+    }
+
+    @page {
+        margin: 14mm;
+    }
+}

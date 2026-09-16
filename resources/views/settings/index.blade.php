@@ -20,7 +20,7 @@
             'value' => $school->name,
         ],
         [
-            'label' => 'Academic years & terms',
+            'label' => 'Academic years & periods',
             'description' => 'Open a new year, set its terms, and move the school into the term it is teaching.',
             'icon' => '▤',
             'route' => route('settings.years.index'),

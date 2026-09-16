@@ -121,7 +121,8 @@ class PasswordFieldTest extends TestCase
     public function test_editing_an_account_has_one_on_both_boxes(): void
     {
         $account = User::factory()->create(['school_id' => $this->school->id, 'status' => 'active']);
-        $account->roles()->attach(Role::inCurrentSchool()->value('id'));
+        // A role with no staff permissions, so the editor does not out-rank it.
+        $account->roles()->attach(Role::inCurrentSchool()->where('slug', 'parent-guardian')->value('id'));
 
         $html = $this->actingAs($this->userFor($this->school, ['users.view', 'users.update']))
             ->get(route('users.edit', $account))

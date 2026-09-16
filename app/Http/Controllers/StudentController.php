@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\Enrollment;
 use App\Models\Guardian;
 use App\Models\Role;
+use App\Models\SchoolClass;
 use App\Models\Section;
 use App\Models\Student;
 use App\Services\AuditLogger;
@@ -34,12 +35,26 @@ class StudentController extends Controller
         $filters = [
             'search' => $request->string('search')->trim()->toString(),
             'status' => $request->string('status')->trim()->toString(),
+            'class' => $request->integer('class') ?: null,
         ];
 
+        $year = AcademicYear::active();
+
         $students = Student::query()
-            ->with('guardians:id,first_name,last_name')
+            ->with(['guardians:id,first_name,last_name', 'currentEnrollment.section.schoolClass'])
             ->search($filters['search'])
             ->when($filters['status'], fn ($query, $status) => $query->where('status', $status))
+            /*
+             | Filtered by this year's placement rather than by any placement
+             | ever made: a child who was in Grade 9 last year and Grade 10 now
+             | should appear under one of them, not both.
+             */
+            ->when($filters['class'], fn ($query, $class) => $query->whereHas(
+                'enrollments',
+                fn ($inner) => $inner
+                    ->where('school_class_id', $class)
+                    ->when($year, fn ($q) => $q->where('academic_year_id', $year->id))
+            ))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -48,6 +63,7 @@ class StudentController extends Controller
             'students' => $students,
             'filters' => $filters,
             'statuses' => Student::STATUSES,
+            'classes' => SchoolClass::orderBy('level')->orderBy('name')->get(),
         ]);
     }
 
@@ -163,6 +179,9 @@ class StudentController extends Controller
             'year' => $year,
             'current' => $current,
             'canEnrol' => $request->user()->hasPermission('students.update'),
+            // Everyone on record, so a parent can be linked from the child's
+            // page rather than by editing the parent and hunting for the child.
+            'guardians' => Guardian::orderBy('last_name')->orderBy('first_name')->get(),
             'sections' => Section::with('schoolClass')->get()
                 ->sortBy(fn (Section $s) => $s->full_name)->values(),
             'years' => AcademicYear::orderByDesc('starts_on')->get(),

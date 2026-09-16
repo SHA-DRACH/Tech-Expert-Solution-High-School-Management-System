@@ -3,6 +3,11 @@
 
     <x-ui.page-header :title="$admission->student_name" :description="$admission->application_number">
         <x-slot:actions>
+            {{-- Only once there is an offer to put in writing. --}}
+            @if (in_array($admission->status, ['approved', 'enrolled'], true))
+                <x-ui.button :href="route('admissions.letter', $admission)" variant="secondary">Admission letter</x-ui.button>
+            @endif
+
             <x-ui.status-badge :status="$admission->status" />
         </x-slot:actions>
     </x-ui.page-header>

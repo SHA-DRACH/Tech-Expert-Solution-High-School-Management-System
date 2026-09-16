@@ -34,7 +34,16 @@ class UserManagementTest extends TestCase
 
     protected function manager(): User
     {
-        return $this->userFor($this->school, ['users.view', 'users.create', 'users.update', 'users.suspend']);
+        /*
+         | Holding the permissions of the roles these tests hand out. You can
+         | only give an account authority you have yourself (App\Support\Delegation),
+         | so a manager with account permissions alone cannot make a teacher an
+         | accountant - see DelegationTest for that refusal.
+         */
+        $granted = Role::inCurrentSchool()->whereIn('slug', ['teacher', 'accountant'])->with('permissions:id,slug')->get()
+            ->flatMap(fn (Role $role) => $role->permissions->pluck('slug'))->all();
+
+        return $this->userFor($this->school, array_merge(['users.view', 'users.create', 'users.update', 'users.suspend'], $granted));
     }
 
     protected function account(array $attributes = []): User

@@ -7,7 +7,9 @@ use App\Models\Role;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Support\Delegation;
 use App\Support\SchoolContext;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,6 +29,15 @@ class CreateSchoolUser
             // Every lookup goes through the tenant-scoped query, so an id from
             // another school resolves to nothing and the account is never made.
             $role = Role::inCurrentSchool()->findOrFail($data['role_id']);
+
+            // Creating an account is granting a role, and the same rule applies.
+            $actor = auth()->user();
+
+            if ($actor !== null && ! Delegation::canGrantRole($actor, $role)) {
+                throw ValidationException::withMessages([
+                    'role_id' => 'You cannot give the "'.$role->name.'" role: it holds permissions you do not have yourself.',
+                ]);
+            }
 
             $user = User::create([
                 'school_id' => $this->context->schoolId(),

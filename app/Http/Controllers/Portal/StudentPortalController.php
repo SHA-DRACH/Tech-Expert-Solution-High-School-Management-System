@@ -17,10 +17,14 @@ use App\Models\Student;
 use App\Models\TeachingAssignment;
 use App\Models\Term;
 use App\Models\TimetableEntry;
+use App\Services\ClassSchedule;
 use App\Services\StudentAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The student portal.
@@ -43,6 +47,9 @@ class StudentPortalController extends Controller
             'attendanceRate' => $abilities['view_attendance'] ? $student->attendanceRate() : null,
             'recentGrades' => $abilities['view_grades'] ? $this->gradesFor($student, 5) : collect(),
             'todayTimetable' => $abilities['view_timetable'] ? $this->timetableFor($student, now()->dayOfWeekIso) : collect(),
+            // The whole week, on the dashboard itself - not a click away.
+            'week' => $week = $abilities['view_timetable'] ? app(ClassSchedule::class)->week($student) : collect(),
+            'days' => app(ClassSchedule::class)->days($week),
             'announcements' => $this->announcements($student),
             'events' => Event::upcoming()->limit(3)->get(),
             'reportCardCount' => $abilities['view_report_cards']
@@ -85,23 +92,33 @@ class StudentPortalController extends Controller
 
         $this->authorizeAbility($student, 'view_timetable');
 
-        $sectionId = $student->currentEnrollment?->section_id;
-
-        $entries = $sectionId
-            ? TimetableEntry::where('section_id', $sectionId)
-                ->with(['subject:id,name', 'teacher:id,first_name,last_name'])
-                ->orderBy('day_of_week')
-                ->orderBy('starts_at')
-                ->get()
-                ->groupBy('day_of_week')
-            : collect();
+        $schedule = app(ClassSchedule::class);
+        $week = $schedule->week($student);
 
         return view('portals.student.timetable', [
             'student' => $student,
-            'abilities' => $this->access()->for($student),
-            'entriesByDay' => $entries,
-            'days' => TimetableEntry::DAYS,
+            'abilities' => $abilities = $this->access()->for($student),
+            'week' => $week,
+            'days' => $schedule->days($week),
+            'canDownload' => $abilities['download_timetable'],
         ]);
+    }
+
+    /** The week as an Excel file the student keeps. */
+    public function downloadTimetable(Request $request): StreamedResponse
+    {
+        $student = $this->student($request);
+
+        $this->authorizeAbility($student, 'view_timetable');
+        $this->authorizeAbility($student, 'download_timetable');
+
+        $book = app(ClassSchedule::class)->workbook($student, $request->user()->school);
+
+        return response()->streamDownload(
+            fn () => IOFactory::createWriter($book, 'Xlsx')->save('php://output'),
+            Str::slug('class-schedule-'.$student->full_name).'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        );
     }
 
     /**

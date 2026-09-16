@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Support\Delegation;
 use App\Support\SchoolContext;
 
 class UserPolicy
@@ -25,7 +26,10 @@ class UserPolicy
 
     public function update(User $user, User $target): bool
     {
-        return $user->hasPermission('users.update') && $this->sameSchool($user, $target);
+        return $user->hasPermission('users.update')
+            && $this->sameSchool($user, $target)
+            // Nobody edits an account that holds authority they do not.
+            && Delegation::canManageAccount($user, $target);
     }
 
     /** Nobody may suspend their own account, or an account in another school. */
@@ -34,7 +38,8 @@ class UserPolicy
         return $user->id !== $target->id
             && $user->hasPermission('users.suspend')
             && $this->sameSchool($user, $target)
-            && ! $target->isSuperAdministrator();
+            && ! $target->isSuperAdministrator()
+            && Delegation::canManageAccount($user, $target);
     }
 
     protected function sameSchool(User $user, User $target): bool

@@ -950,3 +950,331 @@ it. Absence of a record is not evidence that a child takes nothing.
 The teacher side is the mirror image and already existed: `teaching_assignments`
 holds (teacher, class, subject), set from either Teaching assignments or the
 subject itself, and it is the table that authorises a teacher to enter marks.
+
+## The question a teacher sets
+
+An assessment recorded a title, a mark and a deadline, and nowhere to write what
+the students were actually being asked to do. A teacher setting an essay had to
+hand the question out on paper or read it aloud, and a parent asking "what has
+she been set?" had no answer beyond its title.
+
+Creating or editing an assessment now takes:
+
+- **Question or instructions** — free text, shown to the student and to their
+  parents.
+- **Question paper** — an optional PDF or Word document, up to 8 MB.
+
+Both are optional, and the question panel is not rendered at all when neither
+was given: an empty panel would imply a question had been set and lost.
+
+### The paper is private
+
+It is stored on the **private** disk and only ever streamed through
+`assessments.question`, which checks authorization on every fetch — the same
+treatment a student's own submitted work already gets. A question paper sitting
+on a guessable public URL before the exam has been sat is a different kind of
+problem from an ordinary file leak.
+
+Who may fetch it:
+
+| Who | Why |
+| --- | --- |
+| Staff who may view the assessment | They set it or approve it |
+| Students in the section it was set for | It is their work |
+| Guardians of those students, cleared for academics | The other half of "for both parent and student to see it" |
+
+Everyone else gets a 403, including a student in a **different section of the
+same class** — a paper set for 9A is not for 9B to read before they sit it — and
+a guardian who is not cleared for academic records. Both are tested.
+
+Replacing a paper deletes the old file rather than orphaning it, and an edit
+that does not touch the file leaves the attached one alone.
+
+### Parents can see assignments at all now
+
+Parents had no assignments view. `/parent/assignments` lists the work set for
+their child's class with the question attached, and whether **their own child**
+handed it in — not the rest of the class.
+
+## Paper the school hands out
+
+Four documents leave the building on paper: a **receipt**, an **admission
+letter**, a **report card** and a **student record**. Each now prints on its own
+and carries a QR code.
+
+### Printing prints the document, not the screen
+
+The print stylesheet hides everything and then un-hides one element:
+
+```css
+@media print {
+    body * { visibility: hidden; }
+    .printable, .printable * { visibility: visible; }
+    .printable { position: absolute; inset: 0 auto auto 0; width: 100%; }
+}
+```
+
+`visibility` rather than `display` because the printable element is nested deep
+inside the application shell, and `display: none` on its ancestors would take it
+down with them. Marking the document `.printable` is the whole of the work; the
+sidebar, the header and the buttons stop being printed.
+
+### The code verifies, it does not encode
+
+The QR code holds a **URL**, not the document's contents. A receipt is only a
+claim that money was paid; encoding the amount into the code would be the same
+unverifiable claim in a second alphabet. Scanning lands on `/verify/{type}/{ref}`
+— public on purpose, because the person checking is usually a parent at a
+counter or a bursar at another school, and neither has an account here.
+
+What the check shows is the design problem. The rule: **enough to confirm the
+paper in your hand, nothing you could not already read off it.**
+
+| Document | Confirms | Never shows |
+| --- | --- | --- |
+| Receipt | Number, amount, date, method | Balance, address |
+| Admission letter | Application number, status | Guardian details |
+| Report card | That it was issued, and when | Any mark, average or position |
+| Student record | That the number is real, and enrolment status | Class, results, contacts |
+
+Names are masked to "Mary D." everywhere. Someone who guesses a reference learns
+nothing; someone holding the paper can confirm every line on it.
+
+A **draft** report card carries no code. It can still change and the family has
+not been given it, so printing a code would promise a check the school cannot
+honour. An admission letter does not exist at all until the application is
+approved or enrolled — handing a family a document saying they have a place they
+have not been given is not a formatting problem.
+
+The SVG is inline and has its XML declaration stripped: the report-card download
+opens with no internet connection, and a `<?xml?>` part-way down an HTML document
+is invalid.
+
+## Scholarships
+
+A scholarship is a **standing decision about a child's fees**, not an adjustment
+typed into one invoice — so it has its own record. That distinction is what lets
+it survive the invoice it discounted, be answerable a year later ("who approved
+this?"), and apply again automatically the next time fees are raised.
+
+Stored as **either a percentage or a fixed amount**, because schools use both
+("half fees", "L$5,000 off boarding") and converting one to the other at the
+point of award breaks silently the moment fees change.
+
+`RaiseInvoices` applies them. Awards stack — a sponsor's bursary alongside a
+staff-child discount is ordinary — but never past the value of the bill, or the
+balance goes negative and reads as the school owing the family money. The
+invoice **names the award** that discounted it, because "why is this bill
+smaller?" is the first question anyone asks of a discounted one.
+
+An award is **ended, never deleted** (§47, §71.10). The invoices it already
+discounted are still on the books, and an audit that cannot explain why a bill
+was smaller is not an audit. *Suspended* is deliberately separate: a school
+pausing an award pending a sponsor's payment keeps the record and gets it back
+without retyping it.
+
+## Recording a payment against proof
+
+Cash is handed over the counter and the receipt is the proof. A bank transfer,
+mobile-money payment or cheque happened somewhere the school cannot see, and the
+slip the family brings in is the only thing tying it to this school — so for
+those three methods a **transaction reference is required**, enforced on the
+server and signalled on the form before the bursar takes the money.
+
+The student selector shows **name · class · student number — invoice, balance**.
+Two children called Mary Doe is not an edge case, and taking money against the
+wrong one is not a mistake the receipt reveals.
+
+## The registrar's desk
+
+`/registrar`. Everything here already existed across six modules; the work of
+the office is one person at a counter holding one child's paperwork, so it is
+gathered into one place. **No new authority is invented** — every action
+re-checks the permission of the module behind it, so putting a link on this page
+cannot widen what anyone can reach.
+
+It adds the two things that were genuinely missing: a **student record that
+prints**, and a way to **link a parent to a child** from the child's page rather
+than by editing the parent and hunting for the child.
+
+Linking is its own action rather than a field on the student form, because the
+link carries its own terms — who is primary, and what they may see. Burying
+those in a general edit is how a parent ends up able to read a child's finances
+because somebody was updating an address. Naming a new primary contact demotes
+the old one: "who do we ring first?" needs exactly one answer.
+
+Class sizes are counted in the database, excluding withdrawn and archived
+students — a roll that counts children who left flatters the number, and seating
+gets planned from it. The hub also surfaces two pieces of *work*, not statistics:
+students not yet placed in a class, and students with nobody to telephone.
+
+The student list gained a **class filter**, and it filters on *this year's*
+placement — a child in Grade 9 last year and Grade 10 now belongs under one of
+them, not both. The CSV export honours it too; a file that quietly holds more
+students than the list it came from is worse than no export.
+
+## Things that were silently broken
+
+**A "full access" role stopped being full access.** `Permissions::ALL` was
+expanded into concrete rows when a school was provisioned, so every permission
+added to the platform afterwards reached only schools created later. Existing
+school administrators simply did not have it — no error, no 403, the module was
+just absent from their sidebar. A role defined as *everything* is a statement
+about the catalogue, not a list frozen on the day the school was created, so
+provisioning now tops those roles up. Roles with a named list are still left
+alone; that list is a decision the school made.
+
+**A route name collision.** Two routes named `documents.verify` — a new public
+QR endpoint and a pre-existing staff action. Nothing 404s, both URLs keep
+working, and only `route('documents.verify')` silently moves to whichever was
+registered last; the failure surfaced in an unrelated test. `RouteIntegrityTest`
+caught duplicate method+URI but not duplicate *names*, so it does now.
+
+**The print stylesheet was not in the build.** The CSS was in `resources/css`,
+the tests passed on the markup, and the pages had `.printable` on them — but
+`public/build` was stale, so printing a receipt still printed the whole
+application. Nothing in the test suite can see this; it needs a browser and a
+rebuild.
+
+## Periods, semesters and the grade sheet
+
+A Liberian high school keeps its year in **six marking periods**, three to a
+**semester**, with an **examination** at the end of each semester. Before every
+period closes there is a period test, and alongside it quizzes, assignments and
+attendance.
+
+### How it is stored
+
+A period is a `terms` row with a `semester` number (1–3 → first semester,
+4–6 → second). Not a new table: every mark, report card, invoice and attendance
+figure already hangs off `term_id`, and a second table meaning the same thing
+would split the school's history in two.
+
+A semester is its own row (`semesters`) because it owns something a period does
+not: the examination, and **whether teachers may currently enter its marks**.
+That switch is an administrative decision taken on a particular day, so it is
+recorded with who took it.
+
+A semester exam is an assessment with `semester_id` set and `term_id` null. It
+belongs to the semester, not to the 3rd or 6th period, so it is counted once —
+in the semester average — and never skews a period grade.
+
+**Periods & semesters** (`/academic-periods`) sets a year up. A year still
+keeping terms is converted in place: its terms become the first periods, in
+order, so everything filed against them stays put. Dates start spread evenly
+across the year; the administrator sets the real ones, because only the school
+knows whether a period is a month or a month and a half. The current period
+becomes the one containing today — a converted "Third Term" would otherwise be
+the current 3rd period in September.
+
+### The arithmetic
+
+| | |
+| --- | --- |
+| Period grade | marks obtained ÷ marks possible × 100 |
+| Semester average | (1st + 2nd + 3rd period + semester exam) ÷ 4 |
+| Yearly average | (first semester + second semester) ÷ 2 |
+
+What each part is marked out of — period test 40, quiz 20, assignment 20,
+attendance 20, exam 100 by default — is a school setting (Settings ›
+Academics). **No weights**: an early version weighted each piece of work, and an
+older assignment carrying a weight of 1 turned 34 + 17 + 18 + 19 into 87.53
+instead of 88. Found in the browser, fixed, and tested.
+
+**An average is blank until everything in it exists.** A semester average from
+two periods and no exam looks official and is not. The same goes for a missing
+mark in work the class sat: that child's period grade is blank, not a grade
+built from different work to everyone else's.
+
+The official record — parents, the default year view — counts **approved marks
+only**, and a period with work still awaiting approval has no official grade
+yet. Teachers see their working figure, labelled provisional.
+
+All of it lives in `App\Services\PeriodGrades`, so the screen, the year view
+and the Excel file cannot disagree.
+
+### Entering marks
+
+**Grade sheet** (`/grade-sheet`): choose a class, a subject and a period, and
+every student who takes the subject is listed with a box for each part of the
+period grade. There is no set-up step — the first mark typed creates the
+assessment behind its column. The teacher dashboard lists each class they mark,
+how many students have marks this period, and a button straight in.
+
+Every write — typed or uploaded — goes through `App\Services\GradeSheet::write()`,
+which is **all or nothing**: one refused mark and nothing is saved, with every
+problem listed. A column says *why* it is locked:
+
+- not your class and subject;
+- the period has not started;
+- submitted for approval, or approved;
+- **exam entry is closed** — until someone holding `grades.exam_entry` opens it
+  on Periods & semesters. Opening notifies every teacher and is audited.
+  Closing keeps what was entered.
+
+The academic office (`grades.approve`) is bound by none of these; correcting an
+approved mark is audited as a correction.
+
+### Excel: download, fill in, upload
+
+One workbook per class and period, **a worksheet per subject** the person marks.
+Row per student, column per assessment, a `Period grade` formula that matches the
+screen. Student number and name are locked; mark cells accept only 0 to the
+maximum. A hidden worksheet records which class and period the file is for.
+
+On the way back in:
+
+- rows are matched by **student number**, never by name or position;
+- a file for a different class or period is refused — the hidden label is only
+  used to catch that mistake; it authorises nothing;
+- a worksheet relabelled to a subject the teacher does not teach is refused;
+- the file goes through the same locks as the screen, so it is not a way past a
+  closed exam column;
+- one bad mark anywhere and nothing from the file is kept.
+
+`grades.export` and `grades.import` are separate permissions, both in the
+Teacher role by default.
+
+## Class schedules for students and parents
+
+A student's week — day, start and end time, subject, teacher, room — is on the
+student dashboard and the parent dashboard (per child), each with a full page,
+**Print**, and **Download** as Excel. Today is highlighted, and so is the lesson
+happening now. Days follow the school's teaching days, plus any day that has a
+lesson anyway, so a Saturday class is never hidden.
+
+A student's download can be switched off per student (`download_timetable`). A
+parent sees a child's schedule only if the school has cleared them for that
+child's academic records: where a child is, hour by hour, deserves the same
+protection as their results.
+
+## Delegation: admissions head, HR, and a hole that is now closed
+
+Every school now starts with **Admissions Head** and **HR Officer** roles, which
+the administrator can widen or narrow in Roles & permissions.
+
+Setting those up exposed a real hole. Anyone with `users.update` could give any
+account — **their own included** — the School Administrator role, and anyone
+with `roles.manage` could add any permission to a role they held. Delegating a
+small job delegated the whole school.
+
+`App\Support\Delegation`: **nobody may grant a privileged permission they do not
+hold**, and nobody may edit or suspend an account that holds one they do not.
+Privileged (`Permissions::PRIVILEGED`) means control over accounts, roles,
+settings, money, the audit trail, or signing off results. Ordinary working
+permissions are left out deliberately — the first version checked every
+permission, and an HR officer could no longer give a new teacher the Teacher
+role. `DelegationTest` was checked by switching the guard off: five tests fail.
+
+## Also fixed along the way
+
+**Marking views leaked across classes.** An account with `grades.enter` and no
+teacher record counted as *unrestricted*, and the mark sheet showed it every
+class's students and marks. Having no teacher record now narrows an account to
+no classes. Saving was never affected.
+
+**New permissions and existing roles.** A role defined as full access tops up
+when the catalogue grows; a named role such as Teacher does not, by design.
+Existing schools' Teacher roles therefore need `grades.export` and
+`grades.import` added in Roles & permissions (done for the Grace Foundation dev
+database).

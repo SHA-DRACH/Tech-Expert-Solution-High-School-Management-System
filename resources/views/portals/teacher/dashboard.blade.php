@@ -38,6 +38,68 @@
         </div>
     @endif
 
+    {{--
+        Where period-end marking starts: every class and subject this teacher
+        marks, and how far the current period has got. One click opens that
+        class with every student listed, ready for marks.
+    --}}
+    @can('grades.enter')
+        <x-ui.card class="mt-6" :padded="false"
+                   title="Enter marks"
+                   :description="$currentPeriod ? ucfirst($currentPeriod->label()).($currentPeriod->ends_on ? ' · ends '.$currentPeriod->ends_on->format('j M') : '') : 'Periods have not been set up for this year yet.'">
+            <x-slot:actions>
+                <x-ui.button :href="route('gradesheet.index')" variant="ghost" size="sm">Grade sheet</x-ui.button>
+            </x-slot:actions>
+
+            @if ($marking->isEmpty())
+                <x-ui.empty-state icon="⌘" title="No classes assigned"
+                                  description="Once the academic office assigns you a class and subject, it appears here." />
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-max text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                <th scope="col" class="px-5 py-2.5">Class</th>
+                                <th scope="col" class="px-5 py-2.5">Subject</th>
+                                <th scope="col" class="px-5 py-2.5">Students</th>
+                                <th scope="col" class="px-5 py-2.5">Marked this period</th>
+                                <th scope="col" class="px-5 py-2.5">Status</th>
+                                <th scope="col" class="px-5 py-2.5"><span class="sr-only">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($marking as $row)
+                                <tr class="border-b border-slate-100 last:border-0">
+                                    <td class="px-5 py-3 font-medium text-slate-900">{{ $row['section']->full_name }}</td>
+                                    <td class="px-5 py-3 text-slate-700">{{ $row['subject']->name }}</td>
+                                    <td class="px-5 py-3 tabular-nums text-slate-700">{{ $row['students'] }}</td>
+                                    <td class="px-5 py-3">
+                                        <span class="tabular-nums text-slate-700">{{ $row['marked'] }} of {{ $row['students'] }}</span>
+                                        @if ($row['students'] > 0)
+                                            <span class="mt-1 block h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                                                <span class="block h-full rounded-full bg-brand" style="width: {{ min(100, round($row['marked'] / $row['students'] * 100)) }}%"></span>
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3"><x-ui.status-badge :status="$row['status']" /></td>
+                                    <td class="px-5 py-3 text-right">
+                                        @if ($currentPeriod)
+                                            <x-ui.button size="sm" :href="route('gradesheet.index', [
+                                                'section' => $row['section']->id,
+                                                'subject' => $row['subject']->id,
+                                                'sheet' => 'period:'.$currentPeriod->id,
+                                            ])">Enter marks</x-ui.button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-ui.card>
+    @endcan
+
     <div class="mt-6 grid gap-6 lg:grid-cols-3">
         <x-ui.card title="Today's lessons" :description="now()->format('l, j F')" :padded="false">
             @forelse ($todayTimetable as $entry)

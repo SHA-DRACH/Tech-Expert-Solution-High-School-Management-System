@@ -35,6 +35,7 @@ class StudentPermission extends Model
         'view_grades' => ['label' => 'View grades', 'default' => true],
         'view_attendance' => ['label' => 'View attendance', 'default' => true],
         'view_timetable' => ['label' => 'View timetable', 'default' => true],
+        'download_timetable' => ['label' => 'Download timetable', 'default' => true],
         'view_subjects' => ['label' => 'View subjects', 'default' => true],
         'view_assignments' => ['label' => 'View assignments', 'default' => true],
         'submit_assignments' => ['label' => 'Submit assignments', 'default' => false],

@@ -50,6 +50,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Catch lazy-loaded relations in development before they become N+1
         // queries on a school with thousands of students.
-        Model::preventLazyLoading($this->app->isLocal());
+        //
+        // In the test suite too. It used to be local-only, which meant a page
+        // could pass every test and still 500 the moment someone opened it on
+        // a developer's machine - /parent/assignments did exactly that.
+        Model::preventLazyLoading($this->app->isLocal() || $this->app->runningUnitTests());
     }
 }

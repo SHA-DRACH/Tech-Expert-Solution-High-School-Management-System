@@ -52,6 +52,47 @@ class SchoolSettings
                     'rules' => ['integer', 'min:1', 'max:100'],
                     'suffix' => '%',
                 ],
+                /*
+                 | What each part of a period grade is marked out of. A period
+                 | grade is the marks added up over the marks possible, so when
+                 | these total 100 it is simply the sum - which is how a teacher
+                 | already works it out by hand.
+                 */
+                'grading_max_period_test' => [
+                    'label' => 'Period test is marked out of',
+                    'hint' => 'The four parts of a period grade normally add up to 100.',
+                    'type' => self::TYPE_INTEGER,
+                    'default' => 40,
+                    'rules' => ['integer', 'min:1', 'max:100'],
+                ],
+                'grading_max_quiz' => [
+                    'label' => 'Quiz is marked out of',
+                    'hint' => 'Part of each period grade.',
+                    'type' => self::TYPE_INTEGER,
+                    'default' => 20,
+                    'rules' => ['integer', 'min:1', 'max:100'],
+                ],
+                'grading_max_assignment' => [
+                    'label' => 'Assignment is marked out of',
+                    'hint' => 'Part of each period grade.',
+                    'type' => self::TYPE_INTEGER,
+                    'default' => 20,
+                    'rules' => ['integer', 'min:1', 'max:100'],
+                ],
+                'grading_max_attendance' => [
+                    'label' => 'Attendance is marked out of',
+                    'hint' => 'Part of each period grade.',
+                    'type' => self::TYPE_INTEGER,
+                    'default' => 20,
+                    'rules' => ['integer', 'min:1', 'max:100'],
+                ],
+                'grading_max_semester_exam' => [
+                    'label' => 'Semester examination is marked out of',
+                    'hint' => 'Counts as one of four equal parts of the semester average.',
+                    'type' => self::TYPE_INTEGER,
+                    'default' => 100,
+                    'rules' => ['integer', 'min:1', 'max:200'],
+                ],
                 'attendance_school_days' => [
                     'label' => 'School days',
                     'hint' => 'Attendance percentages and absence reports only count these days.',

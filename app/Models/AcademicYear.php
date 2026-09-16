@@ -27,6 +27,17 @@ class AcademicYear extends Model
         return $this->hasMany(Term::class)->orderBy('sequence');
     }
 
+    public function semesters(): HasMany
+    {
+        return $this->hasMany(Semester::class)->orderBy('number');
+    }
+
+    /** True once the year is organised as marking periods within semesters. */
+    public function usesPeriods(): bool
+    {
+        return $this->terms()->whereNotNull('semester')->exists();
+    }
+
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);

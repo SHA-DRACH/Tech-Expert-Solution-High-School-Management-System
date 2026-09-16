@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Http\Controllers\Concerns\ResolvesMarkingScope;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Announcement;
 use App\Models\Assessment;
+use App\Models\AssessmentScore;
 use App\Models\AssignmentSubmission;
 use App\Models\AttendanceRecord;
 use App\Models\Section;
@@ -13,6 +15,7 @@ use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\Term;
 use App\Models\TimetableEntry;
+use App\Services\PeriodGrades;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -26,6 +29,8 @@ use Illuminate\View\View;
  */
 class TeacherPortalController extends Controller
 {
+    use ResolvesMarkingScope;
+
     public function dashboard(Request $request): View
     {
         $teacher = $this->teacher($request);
@@ -65,7 +70,51 @@ class TeacherPortalController extends Controller
                 ->limit(6)
                 ->get(),
             'announcements' => Announcement::live()->for('teachers')->latest('published_at')->limit(4)->get(),
+            'currentPeriod' => $period = ($year = AcademicYear::active()) ? app(PeriodGrades::class)->currentPeriod($year) : null,
+            'marking' => $this->markingProgress($assignments, $period),
         ]);
+    }
+
+    /**
+     * Each class and subject this teacher marks, with how far the current
+     * period's marks have got - the list a teacher works down at period end.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    protected function markingProgress(Collection $assignments, ?Term $period): Collection
+    {
+        return $assignments
+            ->filter(fn ($assignment) => $assignment->section && $assignment->subject)
+            ->sortBy(fn ($assignment) => $assignment->section->full_name.' '.$assignment->subject->name)
+            ->map(function ($assignment) use ($period) {
+                $roster = $this->roster($assignment->section, $assignment->subject);
+
+                $assessments = $period
+                    ? Assessment::where('section_id', $assignment->section_id)
+                        ->where('subject_id', $assignment->subject_id)
+                        ->where('term_id', $period->id)
+                        ->get()
+                    : collect();
+
+                $marked = $assessments->isEmpty() ? 0 : AssessmentScore::whereIn('assessment_id', $assessments->pluck('id'))
+                    ->whereIn('student_id', $roster->pluck('id'))
+                    ->distinct()
+                    ->count('student_id');
+
+                return [
+                    'section' => $assignment->section,
+                    'subject' => $assignment->subject,
+                    'students' => $roster->count(),
+                    'marked' => $marked,
+                    'status' => match (true) {
+                        $assessments->isEmpty() => 'not started',
+                        $assessments->every(fn ($a) => $a->status === 'approved') => 'approved',
+                        $assessments->contains(fn ($a) => $a->status === 'submitted') => 'submitted',
+                        default => 'draft',
+                    },
+                ];
+            })
+            ->values();
     }
 
     public function classes(Request $request): View

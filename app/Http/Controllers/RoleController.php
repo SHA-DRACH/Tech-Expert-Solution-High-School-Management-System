@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Services\AuditLogger;
+use App\Support\Delegation;
 use App\Support\Permissions;
 use App\Support\SchoolContext;
 use Illuminate\Http\RedirectResponse;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class RoleController extends Controller
@@ -44,6 +46,8 @@ class RoleController extends Controller
         $this->authorize('create', Role::class);
 
         $data = $this->validateRole($request);
+
+        $this->refuseBeyond($request, $data['permissions'] ?? []);
 
         $role = DB::transaction(function () use ($data, $context) {
             $role = Role::create([
@@ -80,6 +84,13 @@ class RoleController extends Controller
         $this->authorize('update', $role);
 
         $data = $this->validateRole($request, $role);
+
+        // Neither widening a role past your own authority, nor editing one
+        // that already out-ranks you (which is how you would demote it).
+        abort_unless(Delegation::beyond($request->user(), $role->permissions->pluck('slug'))->isEmpty(), 403,
+            'This role holds permissions you do not have, so you cannot change it.');
+
+        $this->refuseBeyond($request, $data['permissions'] ?? []);
 
         $before = $role->permissions->pluck('slug')->sort()->values()->all();
 
@@ -137,6 +148,18 @@ class RoleController extends Controller
             // Only slugs the platform actually defines may be granted.
             'permissions.*' => ['string', Rule::in(Permissions::slugs())],
         ]);
+    }
+
+    /** @param  array<int, string>  $slugs */
+    protected function refuseBeyond(Request $request, array $slugs): void
+    {
+        $beyond = Delegation::beyond($request->user(), $slugs);
+
+        if ($beyond->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'permissions' => 'You cannot grant permissions you do not have yourself: '.$beyond->join(', ').'.',
+            ]);
+        }
     }
 
     /** @param  array<int, string>  $slugs */

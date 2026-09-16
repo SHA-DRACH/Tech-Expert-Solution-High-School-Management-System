@@ -66,6 +66,9 @@ class Permissions
             'grades.approve' => 'Approve and publish grades',
             'reportcards.view' => 'View report cards',
             'reportcards.generate' => 'Generate report cards',
+            'grades.exam_entry' => 'Open and close semester exam mark entry',
+            'grades.export' => 'Download class grade sheets (Excel)',
+            'grades.import' => 'Upload filled-in class grade sheets (Excel)',
         ],
         'Finance' => [
             'fees.manage' => 'Manage fee structures',
@@ -73,6 +76,8 @@ class Permissions
             'payments.view' => 'View payments',
             'payments.record' => 'Record payments and issue receipts',
             'expenses.manage' => 'Manage expenses',
+            'scholarships.view' => 'View scholarships and fee waivers',
+            'scholarships.manage' => 'Award, suspend and end scholarships',
             'finance.report' => 'Run financial reports',
         ],
         'Communication' => [
@@ -104,6 +109,24 @@ class Permissions
         'Audit' => [
             'audit.view' => 'View the audit trail',
         ],
+    ];
+
+    /**
+     * Permissions that control other people, money or the record itself.
+     *
+     * Nobody may grant one of these without holding it (App\Support\Delegation).
+     * Ordinary working permissions are left out deliberately, so an HR officer
+     * can give a new teacher the Teacher role without being able to mark work.
+     *
+     * @var array<int, string>
+     */
+    public const PRIVILEGED = [
+        'users.create', 'users.update', 'users.suspend', 'roles.manage',
+        'settings.manage', 'audit.view', 'website.manage',
+        'fees.manage', 'invoices.manage', 'payments.record', 'expenses.manage',
+        'scholarships.manage', 'finance.report',
+        'admissions.approve', 'students.archive',
+        'grades.approve', 'grades.exam_entry', 'academics.manage',
     ];
 
     /** @return array<int, string> */
@@ -155,7 +178,9 @@ class Permissions
                     'admissions.reject', 'students.view', 'guardians.view', 'teachers.view',
                     'academics.view', 'academics.manage', 'timetable.view', 'attendance.view',
                     'attendance.report', 'exams.view', 'exams.manage', 'grades.approve',
-                    'reportcards.view', 'reportcards.generate', 'finance.report', 'announcements.manage',
+                    'reportcards.view', 'reportcards.generate', 'grades.exam_entry', 'grades.export',
+                    'finance.report', 'scholarships.view',
+                    'announcements.manage',
                     'events.manage', 'requests.manage', 'reports.view', 'reports.export', 'audit.view',
                 ],
             ],
@@ -166,8 +191,32 @@ class Permissions
                     'dashboard.view', 'admissions.view', 'admissions.review', 'students.view',
                     'guardians.view', 'teachers.view', 'academics.view', 'timetable.view',
                     'timetable.manage', 'attendance.view', 'attendance.report', 'exams.view',
-                    'grades.approve', 'reportcards.view', 'announcements.manage', 'events.manage',
-                    'requests.manage', 'reports.view',
+                    'grades.approve', 'grades.exam_entry', 'grades.export', 'reportcards.view',
+                    'announcements.manage', 'events.manage', 'requests.manage', 'reports.view',
+                ],
+            ],
+            /*
+             | Delegated offices. Each is a starting point the administrator can
+             | widen or narrow in Roles & permissions; neither can hand out more
+             | authority than it holds.
+             */
+            'admissions-head' => [
+                'name' => 'Admissions Head',
+                'description' => 'Runs admissions: reviews, decides and enrolls applicants.',
+                'permissions' => [
+                    'dashboard.view', 'admissions.view', 'admissions.review', 'admissions.approve',
+                    'admissions.reject', 'admissions.enroll', 'admissions.documents.verify',
+                    'students.view', 'students.create', 'guardians.view', 'guardians.create',
+                    'academics.view', 'timetable.view', 'reports.view',
+                ],
+            ],
+            'hr-officer' => [
+                'name' => 'HR Officer',
+                'description' => 'Staff records and staff accounts.',
+                'permissions' => [
+                    'dashboard.view', 'teachers.view', 'teachers.create', 'teachers.update',
+                    'teachers.archive', 'users.view', 'users.create', 'users.update',
+                    'users.suspend', 'roles.view', 'reports.view', 'reports.export',
                 ],
             ],
             'registrar' => [
@@ -178,7 +227,8 @@ class Permissions
                     'admissions.reject', 'admissions.enroll', 'admissions.documents.verify',
                     'students.view', 'students.create', 'students.update', 'students.archive',
                     'students.export', 'guardians.view', 'guardians.create', 'guardians.update',
-                    'academics.view', 'reports.view', 'reports.export',
+                    'academics.view', 'scholarships.view', 'reportcards.view',
+                    'reports.view', 'reports.export',
                 ],
             ],
             'accountant' => [
@@ -187,6 +237,7 @@ class Permissions
                 'permissions' => [
                     'dashboard.view', 'students.view', 'guardians.view', 'fees.manage',
                     'invoices.manage', 'payments.view', 'payments.record', 'expenses.manage',
+                    'scholarships.view', 'scholarships.manage',
                     'finance.report', 'reports.view', 'reports.export',
                 ],
             ],
@@ -196,7 +247,7 @@ class Permissions
                 'permissions' => [
                     'dashboard.view', 'students.view', 'academics.view', 'timetable.view',
                     'attendance.view', 'attendance.record', 'exams.view', 'grades.enter',
-                    'reportcards.view', 'messages.send',
+                    'grades.export', 'grades.import', 'reportcards.view', 'messages.send',
                 ],
             ],
             'staff' => [

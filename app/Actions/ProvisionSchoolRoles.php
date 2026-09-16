@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\DB;
  * Run when a school is onboarded, and safe to re-run afterwards: it never
  * touches a role's permissions once the school has customised them, so an
  * administrator's edits are not overwritten by a later platform update.
+ *
+ * The one exception is a role defined as holding *everything*. That definition
+ * is a statement about the catalogue rather than a list frozen on the day the
+ * school was created, so a permission added to the platform later has to reach
+ * it. Without this, adding a capability silently left every existing school
+ * administrator unable to use it, with no error to explain why - the module was
+ * simply not in their sidebar.
  */
 class ProvisionSchoolRoles
 {
@@ -33,8 +40,14 @@ class ProvisionSchoolRoles
                     'is_system' => true,
                 ])->save();
 
+                $holdsEverything = in_array(Permissions::ALL, $definition['permissions'], true);
+
                 if ($isNew || $resetPermissions) {
                     $role->permissions()->sync($this->resolve($definition['permissions'], $permissionIds));
+                } elseif ($holdsEverything) {
+                    // Additive: catches up on anything new in the catalogue
+                    // without disturbing the rest of the school's roles.
+                    $role->permissions()->syncWithoutDetaching($permissionIds->values()->all());
                 }
             }
         });

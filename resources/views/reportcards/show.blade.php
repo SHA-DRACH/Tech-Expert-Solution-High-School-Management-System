@@ -34,7 +34,7 @@
     @endif
 
     {{-- Deliberately plain so it prints cleanly on any printer. --}}
-    <div class="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm print:max-w-none print:border-0 print:shadow-none">
+    <div class="printable mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-8 shadow-sm print:max-w-none print:border-0 print:shadow-none">
         <header class="flex items-start justify-between gap-4 border-b-2 border-slate-800 pb-5">
             <div class="flex items-center gap-3">
                 @if ($school?->logo_path)
@@ -216,6 +216,23 @@
                 </p>
             </div>
         </div>
+
+        {{--
+            The verification code. A grade sheet is the document most worth
+            forging - it decides admission to the next school - so the point of
+            printing it is that anyone holding the paper can check it against
+            the school's own records without needing an account here. Drafts
+            carry no code, because there is nothing yet to confirm.
+        --}}
+        @if (! empty($verifyCode))
+            <div class="mt-6 flex items-center gap-3 border-t border-slate-200 pt-4">
+                <div class="shrink-0">{!! $verifyCode !!}</div>
+                <p class="text-xs leading-relaxed text-slate-500">
+                    Scan to verify this report card against {{ $school?->name }}'s records.<br>
+                    Marks are not shown by the check — only that this card was issued.
+                </p>
+            </div>
+        @endif
     </div>
 
     {{-- Staff may add the written comments; parents and students only read them. --}}

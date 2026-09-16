@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\OfferSubjectToClasses;
 use App\Models\AcademicYear;
 use App\Models\Department;
 use App\Models\SchoolClass;
@@ -258,8 +259,12 @@ class SubjectController extends Controller
     {
         $classes = SchoolClass::whereIn('id', $classIds)->pluck('id');
 
-        $subject->schoolClasses()->sync(
+        $changes = $subject->schoolClasses()->sync(
             $classes->mapWithKeys(fn (int $id) => [$id => ['school_id' => $subject->school_id]])->all()
         );
+
+        // The students already in a newly ticked grade take it too, or the
+        // subject would reach the class but never its report cards.
+        app(OfferSubjectToClasses::class)->handle($subject, $changes['attached']);
     }
 }
