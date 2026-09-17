@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\DocumentCode as VerificationCode;
 use App\Models\PeriodConduct;
 use App\Models\Section;
 use App\Models\Student;
@@ -204,7 +205,7 @@ class ProgressReportController extends Controller
             'periodNumber' => $number,
             'semesterNumber' => $semester,
             'columns' => $columns,
-            'codes' => $this->codes($report, $only, 'grade-sheet', (string) $period->id),
+            'codes' => $this->codes($report, $only, VerificationCode::GRADE_SHEET, $year, $period),
             'backUrl' => url()->previous(),
         ]);
     }
@@ -223,7 +224,7 @@ class ProgressReportController extends Controller
             'rows' => $this->rowsFor($report, $only),
             'passMark' => app(Gradebook::class)->passMark(),
             'note' => app(\App\Services\SchoolSettings::class)->get('reportcard_remark'),
-            'codes' => $this->codes($report, $only, 'progress-report', (string) $year->id),
+            'codes' => $this->codes($report, $only, VerificationCode::REPORT_CARD, $year),
             'backUrl' => url()->previous(),
         ]);
     }
@@ -240,16 +241,28 @@ class ProgressReportController extends Controller
         return collect([$row]);
     }
 
-    /** @return array<int, ?string> QR codes keyed by student id */
-    protected function codes(array $report, ?Student $only, string $type, string $suffix): array
+    /**
+     * The verification code for each paper, and a QR code that opens its check.
+     *
+     * The code is printed so it can be typed in by someone without a phone
+     * camera; the QR carries the same code for someone with one.
+     *
+     * @return array<int, array{code: string, qr: ?string}> keyed by student id
+     */
+    protected function codes(array $report, ?Student $only, string $type, AcademicYear $year, ?Term $period = null): array
     {
-        $documentCode = app(DocumentCode::class);
+        $qr = app(DocumentCode::class);
 
         return $report['students']
             ->when($only, fn ($rows) => $rows->only([$only->id]))
-            ->mapWithKeys(fn (array $row) => [
-                $row['student']->id => $documentCode->forDocument($type, $row['student']->student_number.'.'.$suffix, 90),
-            ])
+            ->mapWithKeys(function (array $row) use ($qr, $type, $year, $period) {
+                $code = VerificationCode::for($type, $row['student'], $year, $period)->code;
+
+                return [$row['student']->id => [
+                    'code' => $code,
+                    'qr' => $qr->svg(route('online.document.show', $code), 90),
+                ]];
+            })
             ->all();
     }
 

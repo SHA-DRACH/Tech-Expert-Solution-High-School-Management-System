@@ -19,6 +19,7 @@
         ['label' => 'News', 'url' => route('public.news'), 'active' => 'public.news*', 'shown' => $visibility->shows('news')],
         ['label' => 'Events', 'url' => route('public.events'), 'active' => 'public.events', 'shown' => $visibility->shows('events')],
         ['label' => 'Gallery', 'url' => route('public.gallery'), 'active' => 'public.gallery', 'shown' => $visibility->shows('gallery')],
+        ['label' => 'Online services', 'url' => route('online.index'), 'active' => 'online.*', 'shown' => true],
         ['label' => 'Contact', 'url' => route('public.contact'), 'active' => 'public.contact', 'shown' => true],
     ])->filter(fn (array $item) => $item['shown'])->values();
 @endphp
@@ -114,7 +115,7 @@
                 @php $isActive = request()->routeIs($item['active']); @endphp
 
                 <a href="{{ $item['url'] }}"
-                   class="group relative rounded-lg px-3 py-2 font-medium transition-colors
+                   class="group relative whitespace-nowrap rounded-lg px-2.5 py-2 font-medium transition-colors
                           {{ $isActive ? 'text-brand' : 'text-slate-600 hover:text-brand' }}"
                    @if ($isActive) aria-current="page" @endif>
                     {{ $item['label'] }}
@@ -223,6 +224,7 @@
             <div class="mt-5 grid gap-2">
                 <x-ui.button :href="route('apply')" size="sm">Apply for admission</x-ui.button>
                 <x-ui.button :href="route('login')" variant="secondary" size="sm">Parent &amp; student login</x-ui.button>
+                <x-ui.button :href="route('online.index')" variant="secondary" size="sm">Online services</x-ui.button>
             </div>
         </div>
     </div>

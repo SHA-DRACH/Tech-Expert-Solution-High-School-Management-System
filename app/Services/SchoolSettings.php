@@ -210,6 +210,42 @@ class SchoolSettings
             ],
         ],
 
+        'online' => [
+            'label' => 'Online services',
+            'description' => 'What the public Online services page offers, and what it tells families.',
+            'permission' => 'settings.manage',
+            'icon' => '◎',
+            'settings' => [
+                /*
+                 | Checking by student ID needs a number printed on the child's
+                 | own papers. Checking by name and class needs only a name, so
+                 | it tells anyone which class a child is in - useful to an
+                 | employer or another school, and a school may decide that is
+                 | more than it wants public.
+                 */
+                'online_lookup_by_name' => [
+                    'label' => 'Allow checking a student by name and class',
+                    'hint' => 'Checking by student ID is always available. Turn this off to require the ID.',
+                    'type' => self::TYPE_BOOLEAN,
+                    'default' => true,
+                ],
+                'online_payment_instructions' => [
+                    'label' => 'How to pay fees',
+                    'hint' => 'Shown on the Online services page: bank account, mobile money number, what to bring.',
+                    'type' => self::TYPE_TEXT,
+                    'default' => "Pay fees at the bank or by mobile money, then bring the bank slip or the transaction message to the school's finance office. Your payment is recorded and a receipt issued once the slip is presented.",
+                    'rules' => ['nullable', 'string', 'max:1000'],
+                ],
+                'online_office_hours' => [
+                    'label' => 'Office hours',
+                    'hint' => 'When families can reach the office.',
+                    'type' => self::TYPE_STRING,
+                    'default' => 'Monday to Friday, 8:00 AM – 4:00 PM',
+                    'rules' => ['nullable', 'string', 'max:120'],
+                ],
+            ],
+        ],
+
         'notifications' => [
             'label' => 'Notifications',
             'description' => 'What reaches a parent’s phone as well as their portal.',

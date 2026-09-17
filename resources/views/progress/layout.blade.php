@@ -36,6 +36,7 @@
         .sign { margin-top: 18px; font-size: 13px; }
         .sign .line { display: inline-block; min-width: 180px; border-bottom: 1px solid #111; margin-left: 4px; }
         .sign small { display: block; text-align: center; font-weight: bold; }
+        .doc-code { font-family: "Courier New", monospace; font-size: 12px; letter-spacing: .08em; color: #111; }
         .verify { display: flex; align-items: center; gap: 8px; font-family: system-ui, sans-serif; font-size: 9px; color: #555; }
         @media print {
             body { background: #fff; }

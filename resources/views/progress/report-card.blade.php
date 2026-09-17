@@ -104,9 +104,12 @@
             @endif
 
             @if (! empty($codes[$student->id]))
-                <div class="verify" style="margin-top:10px;justify-content:flex-end">
-                    <span>Scan to verify this report with {{ $school?->name }}. Only approved marks are printed.</span>
-                    <div>{!! $codes[$student->id] !!}</div>
+                <div class="verify" style="margin-top:10px;justify-content:flex-end;text-align:right">
+                    <span>
+                        Verification code: <strong class="doc-code">{{ $codes[$student->id]['code'] }}</strong><br>
+                        Check this report card at {{ route('online.index') }} or scan the code.
+                    </span>
+                    <div>{!! $codes[$student->id]['qr'] !!}</div>
                 </div>
             @endif
         </div>

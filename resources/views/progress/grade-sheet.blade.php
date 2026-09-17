@@ -99,8 +99,11 @@
 
             @if (! empty($codes[$student->id]))
                 <div class="verify" style="margin-top:10px">
-                    <div>{!! $codes[$student->id] !!}</div>
-                    <span>Scan to verify this grade sheet with {{ $school?->name }}. Only approved marks are printed.</span>
+                    <div>{!! $codes[$student->id]['qr'] !!}</div>
+                    <span>
+                        Verification code: <strong class="doc-code">{{ $codes[$student->id]['code'] }}</strong><br>
+                        Check this grade sheet at {{ route('online.index') }} or scan the code.
+                    </span>
                 </div>
             @endif
         </div>

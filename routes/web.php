@@ -30,6 +30,7 @@ use App\Http\Controllers\MarkImportController;
 use App\Http\Controllers\MarkSheetController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnlineServicesController;
 use App\Http\Controllers\ParentRequestController;
 use App\Http\Controllers\PlatformSchoolController;
 use App\Http\Controllers\Portal\ParentPortalController;
@@ -80,6 +81,25 @@ Route::get('/events', [PublicSchoolController::class, 'events'])->name('public.e
 Route::get('/apply', [PublicAdmissionController::class, 'create'])->name('apply');
 Route::post('/apply', [PublicAdmissionController::class, 'store'])->middleware('throttle:5,1')->name('apply.store');
 Route::get('/apply/complete', [PublicAdmissionController::class, 'complete'])->name('apply.complete');
+
+/*
+| Online services: checks anyone may make without an account. Rate-limited per
+| visitor, and the details typed in are POSTed so they never sit in a URL.
+*/
+Route::get('/online-services', [OnlineServicesController::class, 'index'])->name('online.index');
+Route::post('/online-services/student', [OnlineServicesController::class, 'checkStudent'])
+    ->middleware('throttle:10,1')
+    ->name('online.student');
+Route::post('/online-services/application', [OnlineServicesController::class, 'checkApplication'])
+    ->middleware('throttle:10,1')
+    ->name('online.application');
+Route::post('/online-services/document', [OnlineServicesController::class, 'checkDocument'])
+    ->middleware('throttle:20,1')
+    ->name('online.document');
+Route::get('/online-services/document/{code}', [OnlineServicesController::class, 'showDocument'])
+    ->middleware('throttle:20,1')
+    ->where('code', '[A-Za-z0-9-]{1,30}')
+    ->name('online.document.show');
 
 /*
 | Where a scanned QR code lands. Public on purpose: the person checking a
