@@ -193,6 +193,7 @@
 
 </head>
 <body class="bg-slate-50 font-sans text-slate-900 antialiased">
+@include('partials.splash')
 <div x-data="{ mobileNav: false }" class="min-h-screen lg:flex">
 
     {{-- Mobile navigation drawer --}}

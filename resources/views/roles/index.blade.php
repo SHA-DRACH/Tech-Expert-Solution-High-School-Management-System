@@ -40,7 +40,7 @@
                                     :action="route('roles.destroy', $role)"
                                     method="DELETE"
                                     title="Delete this role?"
-                                    :message="'The role &quot;'.$role->name.'&quot; will be removed. This cannot be undone.'"
+                                    :message="'The role “'.$role->name.'” will be removed. This cannot be undone.'"
                                     confirm="Delete role"
                                     class="text-rose-600 hover:bg-rose-50"
                                 >Delete</x-ui.confirm>

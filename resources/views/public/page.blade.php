@@ -1,3 +1,5 @@
+@php $t = App\Support\SiteContent::for($page ?? null, 'contact', $school); @endphp
+
 <x-layouts.public :school="$school" :title="$title">
     {{-- Page banner in the brand gradient, matching the homepage hero. --}}
     <section class="section--ink relative overflow-hidden py-16 sm:py-20">
@@ -28,7 +30,7 @@
                         <div class="{{ $loop->first ? '' : 'mt-10' }}">
                             @if (! empty($block['heading']))
                                 @if ($loop->first)
-                                    <p class="eyebrow">Overview</p>
+                                    <p class="eyebrow">{{ $t('overview_eyebrow') }}</p>
                                 @endif
 
                                 <h2 class="mt-3 font-display text-2xl font-bold text-slate-900 sm:text-3xl">
@@ -47,7 +49,7 @@
                     @endforeach
                 @else
                     {{-- Nothing written yet: say so plainly rather than showing an empty page. --}}
-                    <p class="eyebrow">Overview</p>
+                    <p class="eyebrow">{{ $t('overview_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-2xl font-bold text-slate-900 sm:text-3xl">
                         {{ $school->name }}
                     </h2>
@@ -55,8 +57,7 @@
                     <div class="mt-5 space-y-4 text-slate-600">
                         <p>{{ $description }}</p>
                         <p>
-                            Contact the school office using the details opposite, or apply online to begin
-                            an admission application.
+                            {{ $t('fallback_body') }}
                         </p>
                     </div>
                 @endif
@@ -70,7 +71,7 @@
             <aside class="card-soft h-fit p-7" data-aos="fade-left" data-aos-delay="80">
                 <span class="icon-badge icon-badge--accent" aria-hidden="true">✆</span>
 
-                <h2 class="mt-5 font-display text-lg font-bold text-slate-900">Get in touch</h2>
+                <h2 class="mt-5 font-display text-lg font-bold text-slate-900">{{ $t('details_heading') }}</h2>
 
                 <address class="mt-4 space-y-3 text-sm not-italic text-slate-600">
                     @if ($school->address)
@@ -92,15 +93,15 @@
     <section class="section section--surface">
         <div class="mx-auto max-w-7xl px-4 sm:px-6">
             <div class="max-w-2xl" data-aos="fade-up">
-                <p class="eyebrow">Next steps</p>
-                <h2 class="mt-3 font-display text-2xl font-bold text-slate-900 sm:text-3xl">Ready to join us?</h2>
+                <p class="eyebrow">{{ $t('next_eyebrow') }}</p>
+                <h2 class="mt-3 font-display text-2xl font-bold text-slate-900 sm:text-3xl">{{ $t('next_heading') }}</h2>
             </div>
 
             <div class="mt-10 grid gap-6 md:grid-cols-3">
                 @foreach ([
-                    ['✦', 'Apply online', 'Complete the four-step admission form from any device.', route('apply')],
-                    ['◉', 'Academic programmes', 'See what we teach across junior and senior high.', route('public.academics')],
-                    ['❋', 'Talk to us', 'Reach the office for admissions and general enquiries.', route('public.contact')],
+                    ['✦', $t('next_1_title'), $t('next_1_body'), route('apply')],
+                    ['◉', $t('next_2_title'), $t('next_2_body'), route('public.academics')],
+                    ['❋', $t('next_3_title'), $t('next_3_body'), route('public.contact')],
                 ] as $index => [$icon, $heading, $body, $url])
                     <a href="{{ $url }}" class="card-soft group block p-7"
                        data-aos="fade-up" data-aos-delay="{{ $index * 80 }}">
@@ -108,7 +109,7 @@
                         <h3 class="mt-5 font-display text-base font-bold text-slate-900">{{ $heading }}</h3>
                         <p class="mt-2 text-sm text-slate-600">{{ $body }}</p>
                         <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
-                            Continue
+                            {{ $t('next_link') }}
                             <span aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-1">→</span>
                         </span>
                     </a>

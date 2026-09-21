@@ -41,7 +41,7 @@
                                             :action="route('gallery.destroy', $item)"
                                             method="DELETE"
                                             title="Remove this image?"
-                                            :message="'&quot;'.$item->title.'&quot; will be deleted from the gallery and from the website. This cannot be undone.'"
+                                            :message="'“'.$item->title.'” will be deleted from the gallery and from the website. This cannot be undone.'"
                                             confirm="Remove image"
                                             class="text-rose-600 hover:bg-rose-50"
                                         >Remove</x-ui.confirm>

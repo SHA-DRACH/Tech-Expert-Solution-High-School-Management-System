@@ -19,6 +19,7 @@ use App\Models\Term;
 use App\Models\WebsitePage;
 use App\Services\PublicVisibility;
 use App\Services\SchoolSettings;
+use App\Support\SiteContent;
 use App\Support\SchoolContext;
 use Illuminate\View\View;
 
@@ -133,17 +134,45 @@ class PublicSchoolController extends Controller
             'school' => $this->school(),
             'departments' => Department::orderBy('name')->get(),
             'teachers' => $this->publicTeachers(),
+            'page' => $this->page('teachers'),
             'socialLinks' => $this->socialLinks(),
         ]);
     }
 
     public function contact(): View
     {
+        $school = $this->school();
+        $page = $this->page('contact');
+        $wording = SiteContent::for($page, 'contact', $school);
+
         return view('public.page', [
-            'school' => $this->school(),
-            'page' => $this->page('contact'),
-            'title' => 'Contact us',
-            'description' => 'Reach the school office for admissions, academic and general enquiries.',
+            'school' => $school,
+            'page' => $page,
+            'title' => $wording->title(),
+            'description' => $wording->summary(),
+            'socialLinks' => $this->socialLinks(),
+        ]);
+    }
+
+    /**
+     * A page the school wrote itself in the website editor (School rules,
+     * Uniform, Transport...). Only published pages are served; a draft is a
+     * 404 to visitors so half-written content never goes out.
+     */
+    public function customPage(string $slug): View
+    {
+        $school = $this->school();
+
+        $page = WebsitePage::published()
+            ->where('key', 'like', SiteContent::CUSTOM_PREFIX.'%')
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return view('public.page', [
+            'school' => $school,
+            'page' => $page,
+            'title' => $page->title,
+            'description' => (string) $page->summary,
             'socialLinks' => $this->socialLinks(),
         ]);
     }
@@ -155,6 +184,7 @@ class PublicSchoolController extends Controller
         return view('public.news', [
             'school' => $this->school(),
             'posts' => NewsPost::live()->latest('published_at')->paginate(9),
+            'page' => $this->page('news'),
             'socialLinks' => $this->socialLinks(),
         ]);
     }
@@ -180,6 +210,7 @@ class PublicSchoolController extends Controller
         return view('public.gallery', [
             'school' => $this->school(),
             'albums' => GalleryItem::published()->orderBy('position')->get()->groupBy('album'),
+            'page' => $this->page('gallery'),
             'socialLinks' => $this->socialLinks(),
         ]);
     }
@@ -191,6 +222,7 @@ class PublicSchoolController extends Controller
         return view('public.events', [
             'school' => $this->school(),
             'events' => Event::where('is_public', true)->upcoming()->get(),
+            'page' => $this->page('events'),
             'socialLinks' => $this->socialLinks(),
         ]);
     }

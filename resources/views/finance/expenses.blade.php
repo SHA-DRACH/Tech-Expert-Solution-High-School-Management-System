@@ -78,7 +78,7 @@
                                             :action="route('expenses.destroy', $expense)"
                                             method="DELETE"
                                             title="Remove this expense?"
-                                            :message="'&quot;'.$expense->description.'&quot; of '.Money::format($expense->amount_minor).' will be removed from the records.'"
+                                            :message="'“'.$expense->description.'” of '.Money::format($expense->amount_minor).' will be removed from the records.'"
                                             confirm="Remove expense"
                                             class="text-rose-600 hover:bg-rose-50"
                                         >Remove</x-ui.confirm>

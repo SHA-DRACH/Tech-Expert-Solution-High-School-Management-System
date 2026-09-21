@@ -51,6 +51,15 @@
             />
         </div>
 
+        @if ($feeDocuments->isNotEmpty())
+            <x-ui.card class="mt-6" title="Fee structure documents" :description="'Fee schedules for '.Str::before($child->full_name, ' ').'\'s class.'">
+                <x-slot:actions>
+                    <x-ui.button :href="route('parent.fees', ['child' => $child->id])" variant="ghost" size="sm">Fees</x-ui.button>
+                </x-slot:actions>
+                @include('partials.fee-documents', ['documents' => $feeDocuments])
+            </x-ui.card>
+        @endif
+
         {{-- The child's week: what they have, when, and with whom. --}}
         @if ($summary['canViewAcademics'])
             <x-ui.card class="mt-6" :title="Str::before($child->full_name, ' ').'\'s week'"

@@ -9,6 +9,7 @@ use App\Models\AssessmentScore;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
 use App\Models\Examination;
+use App\Models\FeeStructure;
 use App\Models\GradeScale;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -51,6 +52,8 @@ class StudentPortalController extends Controller
             'week' => $week = $abilities['view_timetable'] ? app(ClassSchedule::class)->week($student) : collect(),
             'days' => app(ClassSchedule::class)->days($week),
             'announcements' => $this->announcements($student),
+            // Fee schedules for the student's class, where fees are shown to them at all.
+            'feeDocuments' => $abilities['view_fees'] ? FeeStructure::documentsFor($student) : collect(),
             'events' => Event::upcoming()->limit(3)->get(),
             'reportCardCount' => $abilities['view_report_cards']
                 ? ReportCard::published()->where('student_id', $student->id)->count()
@@ -238,6 +241,7 @@ class StudentPortalController extends Controller
             'paidMinor' => (int) Payment::where('student_id', $student->id)->sum('amount_minor'),
             'totalMinor' => (int) Invoice::where('student_id', $student->id)->sum('total_minor'),
             'abilities' => $this->access()->for($student),
+            'feeDocuments' => FeeStructure::documentsFor($student),
         ]);
     }
 

@@ -1,4 +1,6 @@
-<x-layouts.public :school="$school" title="Academics" :social-links="$socialLinks">
+@php $t = App\Support\SiteContent::for($page, 'academics', $school); @endphp
+
+<x-layouts.public :school="$school" :title="$t->title()" :social-links="$socialLinks">
     <section class="section--ink relative overflow-hidden py-16 sm:py-20">
         @if ($page?->hero_image_path)
             <img src="{{ Storage::disk('public')->url($page->hero_image_path) }}" alt=""
@@ -10,17 +12,17 @@
                 <ol class="flex items-center gap-2 text-xs text-white/60">
                     <li><a href="{{ route('home') }}" class="link-underline hover:text-white">Home</a></li>
                     <li aria-hidden="true">/</li>
-                    <li class="font-medium text-white/90" aria-current="page">Academics</li>
+                    <li class="font-medium text-white/90" aria-current="page">{{ $t->title() }}</li>
                 </ol>
             </nav>
 
             <h1 class="mt-4 font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl"
                 data-aos="fade-up" data-aos-delay="80">
-                {{ $page?->title ?? 'Academics' }}
+                {{ $t->title() }}
             </h1>
 
             <p class="mt-4 max-w-2xl text-white/75" data-aos="fade-up" data-aos-delay="160">
-                {{ $page?->summary ?? 'A balanced junior and senior high curriculum designed to prepare confident lifelong learners.' }}
+                {{ $t->summary() }}
             </p>
         </div>
     </section>
@@ -53,9 +55,9 @@
         <section class="section section--surface">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="max-w-2xl" data-aos="fade-up">
-                    <p class="eyebrow">Classes</p>
+                    <p class="eyebrow">{{ $t('classes_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                        What we teach, and to whom
+                        {{ $t('classes_heading') }}
                     </h2>
                 </div>
 
@@ -84,7 +86,7 @@
 
                             @if ($stageSubjects->isNotEmpty() && $visibility->shows('subjects'))
                                 <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Subjects covered
+                                    {{ $t('subjects_covered') }}
                                 </p>
                                 <p class="mt-2 text-sm text-slate-600">
                                     {{ $stageSubjects->pluck('name')->join(', ') }}
@@ -104,9 +106,9 @@
                 <div class="grid gap-12 lg:grid-cols-2">
                     @if ($departments->isNotEmpty())
                         <div data-aos="fade-right">
-                            <p class="eyebrow">Departments</p>
+                            <p class="eyebrow">{{ $t('departments_eyebrow') }}</p>
                             <h2 class="mt-3 font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                                How teaching is organised
+                                {{ $t('departments_heading') }}
                             </h2>
 
                             <div class="mt-6 space-y-3">
@@ -130,9 +132,9 @@
 
                     @if ($subjects->isNotEmpty())
                         <div data-aos="fade-left" data-aos-delay="80">
-                            <p class="eyebrow">Subjects</p>
+                            <p class="eyebrow">{{ $t('subjects_eyebrow') }}</p>
                             <h2 class="mt-3 font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                                Every subject we offer
+                                {{ $t('subjects_heading') }}
                             </h2>
 
                             <div class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -165,9 +167,9 @@
         <section class="section section--surface">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="max-w-2xl" data-aos="fade-up">
-                    <p class="eyebrow">Academic calendar</p>
+                    <p class="eyebrow">{{ $t('calendar_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                        Term dates
+                        {{ $t('calendar_heading') }}
                     </h2>
                 </div>
 
@@ -203,20 +205,20 @@
     <section class="section section--ink">
         <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 class="font-display text-2xl font-bold text-white sm:text-3xl" data-aos="fade-up">
-                Join us next term
+                {{ $t('cta_heading') }}
             </h2>
             <p class="mt-3 text-white/75" data-aos="fade-up" data-aos-delay="80">
-                See what we ask for and apply online in a few minutes.
+                {{ $t('cta_body') }}
             </p>
 
             <div class="mt-8 flex flex-wrap justify-center gap-3" data-aos="fade-up" data-aos-delay="160">
                 <a href="{{ route('public.admissions') }}"
                    class="press inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90">
-                    Admissions information
+                    {{ $t('cta_primary') }}
                 </a>
                 <a href="{{ route('apply') }}"
                    class="press inline-flex items-center rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                    Apply online
+                    {{ $t('cta_secondary') }}
                 </a>
             </div>
         </div>

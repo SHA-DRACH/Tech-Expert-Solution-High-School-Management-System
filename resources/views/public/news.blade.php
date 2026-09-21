@@ -1,16 +1,21 @@
-<x-layouts.public :school="$school" title="News">
+@php $t = App\Support\SiteContent::for($page ?? null, 'news', $school); @endphp
+
+<x-layouts.public :school="$school" :title="$t->title()">
     <section class="section--ink py-16 sm:py-20">
         <div class="mx-auto max-w-7xl px-4 sm:px-6">
-            <p class="eyebrow eyebrow--onDark" data-aos="fade-up">Latest from the school</p>
+            <p class="eyebrow eyebrow--onDark" data-aos="fade-up">{{ $t('eyebrow') }}</p>
             <h1 class="mt-4 font-display text-3xl font-bold text-white sm:text-4xl" data-aos="fade-up" data-aos-delay="80">
-                News
+                {{ $t->title() }}
             </h1>
+            @if ($t->summary() !== '')
+                <p class="mt-4 max-w-2xl text-white/75" data-aos="fade-up" data-aos-delay="160">{{ $t->summary() }}</p>
+            @endif
         </div>
     </section>
 
     <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6">
         @if ($posts->isEmpty())
-            <p class="py-16 text-center text-slate-500">There is no news to show just yet.</p>
+            <p class="py-16 text-center text-slate-500">{{ $t('empty') }}</p>
         @else
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 @foreach ($posts as $post)
@@ -36,7 +41,7 @@
 
                             <a href="{{ route('public.news.show', $post->slug) }}"
                                class="group mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
-                                Read more
+                                {{ $t('read_more') }}
                                 <span aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
                             </a>
                         </div>

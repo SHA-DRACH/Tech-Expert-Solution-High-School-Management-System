@@ -1,7 +1,11 @@
 <x-layouts.app :title="'Edit '.$page->title" heading="Edit page">
     <x-ui.breadcrumbs :trail="['Overview' => route('dashboard'), 'Website' => route('website.index'), $page->title => null]" />
 
-    <x-ui.page-header :title="$page->title" :description="'Public address: /'.$page->slug" />
+    <x-ui.page-header :title="$page->title" :description="'Public address: '.$page->publicUrl()">
+        <x-slot:actions>
+            <x-ui.button :href="$page->publicUrl()" variant="secondary" target="_blank" rel="noopener">View page</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
     <form method="POST" action="{{ route('website.pages.update', $page) }}"
           enctype="multipart/form-data" class="max-w-3xl space-y-6"
@@ -16,7 +20,8 @@
                 </x-ui.field>
 
                 <x-ui.field label="Introduction" name="summary" hint="The short paragraph under the page heading.">
-                    <x-ui.textarea name="summary" :value="$page->summary" rows="3" />
+                    <x-ui.textarea name="summary" :value="$page->summary" rows="3"
+                                   :placeholder="str_replace(':school', auth()->user()->school?->name ?? '', App\Support\SiteContent::PAGES[$page->key]['summary'] ?? '')" />
                 </x-ui.field>
 
                 <x-ui.field label="Search description" name="meta_description"
@@ -73,6 +78,56 @@
                 Add a block
             </x-ui.button>
         </x-ui.card>
+
+        {{--
+            Every heading, label and paragraph on this page. Each field shows
+            the default as its placeholder; leave it empty to keep the default,
+            or type to replace it. Clearing a field puts the default back.
+        --}}
+        @if (! empty($wording))
+            <x-ui.card title="Page wording"
+                       description="Every heading, button and paragraph on this page. Leave a field empty to keep the text shown in grey.">
+                <div class="space-y-6" x-data="{ open: 0 }">
+                    @foreach ($wording as $group => $fields)
+                        <div class="rounded-lg border border-slate-200">
+                            <button type="button" class="flex w-full items-center justify-between px-4 py-3 text-left"
+                                    @click="open = open === {{ $loop->index }} ? -1 : {{ $loop->index }}"
+                                    :aria-expanded="open === {{ $loop->index }}">
+                                <span class="text-sm font-semibold text-slate-800">{{ $group }}</span>
+                                <span class="text-xs text-slate-500">
+                                    {{ count($fields) }} {{ Str::plural('field', count($fields)) }}
+                                    <span aria-hidden="true" x-text="open === {{ $loop->index }} ? '▴' : '▾'"></span>
+                                </span>
+                            </button>
+
+                            <div x-show="open === {{ $loop->index }}" x-cloak x-collapse class="space-y-4 border-t border-slate-100 px-4 py-4">
+                                @foreach ($fields as $key => $field)
+                                    @php
+                                        [$label, $default] = $field;
+                                        $multiline = $field[2] ?? false;
+                                        $value = old("texts.$key", $page->texts[$key] ?? '');
+                                        $placeholder = $wordingText->default($key);
+                                    @endphp
+
+                                    <div>
+                                        <label for="text-{{ $key }}" class="mb-1 block text-xs font-medium text-slate-600">{{ $label }}</label>
+                                        @if ($multiline)
+                                            <textarea id="text-{{ $key }}" name="texts[{{ $key }}]" rows="{{ min(6, max(2, substr_count($placeholder, "\n") + 2)) }}"
+                                                      placeholder="{{ $placeholder }}"
+                                                      class="block w-full rounded-lg border-0 px-3 py-2 text-sm shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand">{{ $value }}</textarea>
+                                        @else
+                                            <input id="text-{{ $key }}" type="text" name="texts[{{ $key }}]" value="{{ $value }}"
+                                                   placeholder="{{ $placeholder }}" maxlength="300"
+                                                   class="block w-full rounded-lg border-0 px-3 py-2 text-sm shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-brand">
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+        @endif
 
         <div class="flex items-center justify-end gap-2">
             <x-ui.button :href="route('website.index')" variant="secondary">Cancel</x-ui.button>

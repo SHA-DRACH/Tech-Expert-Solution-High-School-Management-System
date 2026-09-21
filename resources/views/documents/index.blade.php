@@ -98,7 +98,7 @@
                                                 :action="route('documents.destroy', $document)"
                                                 method="DELETE"
                                                 title="Remove this document?"
-                                                :message="'&quot;'.$document->title.'&quot; will be removed from the file. The record is kept so it can be restored if this was a mistake.'"
+                                                :message="'“'.$document->title.'” will be removed from the file. The record is kept so it can be restored if this was a mistake.'"
                                                 confirm="Remove document"
                                                 class="text-rose-600 hover:bg-rose-50"
                                             >Remove</x-ui.confirm>

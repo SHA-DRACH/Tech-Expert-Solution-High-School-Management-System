@@ -13,6 +13,12 @@
         <x-ui.stat label="Outstanding" :value="Money::format($outstandingMinor)" note="Still to be paid" />
     </div>
 
+    @if ($feeDocuments->isNotEmpty())
+        <x-ui.card class="mt-6" title="Fee structure documents" description="The school's fee schedules. Download and keep a copy.">
+            @include('partials.fee-documents', ['documents' => $feeDocuments])
+        </x-ui.card>
+    @endif
+
     <div class="mt-6 grid gap-6 lg:grid-cols-2">
         <x-ui.card title="Invoices" :padded="false">
             @forelse ($invoices as $invoice)

@@ -13,6 +13,8 @@ use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -25,6 +27,18 @@ use Illuminate\View\View;
  */
 class FeeStructureController extends Controller
 {
+    /** A PDF fee schedule: private storage, 10 MB, PDF only. */
+    protected const DOCUMENT_RULES = [
+        'document' => ['nullable', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:10240'],
+        'document_on_website' => ['nullable', 'boolean'],
+    ];
+
+    protected const DOCUMENT_MESSAGES = [
+        'document.mimes' => 'The fee document must be a PDF.',
+        'document.mimetypes' => 'The fee document must be a PDF.',
+        'document.max' => 'The fee document must be 10 MB or smaller.',
+    ];
+
     public function index(Request $request): View
     {
         abort_unless($request->user()->hasPermission('fees.manage'), 403);
@@ -53,8 +67,10 @@ class FeeStructureController extends Controller
             'items.*.category' => ['required', Rule::in(FeeItem::CATEGORIES)],
             'items.*.description' => ['nullable', 'string', 'max:180'],
             'items.*.amount' => ['required', 'numeric', 'min:0'],
+            ...self::DOCUMENT_RULES,
         ], [
             'items.required' => 'Add at least one fee line.',
+            ...self::DOCUMENT_MESSAGES,
         ]);
 
         $year = AcademicYear::active();
@@ -88,6 +104,8 @@ class FeeStructureController extends Controller
             return $structure;
         });
 
+        $this->saveDocument($request, $structure);
+
         $audit->log('created', 'Finance',
             "Fee structure \"{$structure->name}\" was created, totalling ".Money::format($structure->totalMinor()).'.',
             $structure);
@@ -108,9 +126,13 @@ class FeeStructureController extends Controller
             'items.*.category' => ['required', Rule::in(FeeItem::CATEGORIES)],
             'items.*.description' => ['nullable', 'string', 'max:180'],
             'items.*.amount' => ['required', 'numeric', 'min:0'],
-        ]);
+            ...self::DOCUMENT_RULES,
+            'remove_document' => ['nullable', 'boolean'],
+        ], self::DOCUMENT_MESSAGES);
 
         $before = Money::format($feeStructure->totalMinor());
+
+        $this->saveDocument($request, $feeStructure);
 
         DB::transaction(function () use ($feeStructure, $data, $request) {
             $feeStructure->update([
@@ -148,11 +170,46 @@ class FeeStructureController extends Controller
         $name = $feeStructure->name;
 
         $feeStructure->items()->delete();
+
+        if ($feeStructure->document_path) {
+            Storage::disk('local')->delete($feeStructure->document_path);
+        }
+
         $feeStructure->delete();
 
         $audit->log('deleted', 'Finance', "Fee structure \"{$name}\" was deleted.");
 
         return back()->with('status', 'Fee structure deleted.');
+    }
+
+    /**
+     * Attach, replace or remove the structure's PDF, and whether it is public.
+     *
+     * The file goes to the private disk: it is only ever handed out through
+     * FeeDocumentController, which checks who is asking.
+     */
+    protected function saveDocument(Request $request, FeeStructure $structure): void
+    {
+        $attributes = ['document_on_website' => $request->boolean('document_on_website')];
+
+        if ($request->boolean('remove_document') && $structure->document_path) {
+            Storage::disk('local')->delete($structure->document_path);
+            $attributes += ['document_path' => null, 'document_name' => null, 'document_on_website' => false];
+        }
+
+        if ($request->hasFile('document')) {
+            $file = $request->file('document');
+            $previous = $structure->document_path;
+
+            $attributes['document_path'] = $file->store("schools/{$structure->school_id}/fee-documents", 'local');
+            $attributes['document_name'] = Str::limit($file->getClientOriginalName(), 180, '');
+
+            if ($previous) {
+                Storage::disk('local')->delete($previous);
+            }
+        }
+
+        $structure->update($attributes);
     }
 
     /** Raise an invoice per student from a structure. */

@@ -8,9 +8,12 @@
     $button = 'press inline-flex items-center justify-center rounded-lg border border-white/25 bg-white/20 px-5 py-3 '
         .'text-sm font-semibold text-white transition hover:bg-white/30';
     $card = 'rounded-2xl border border-white/10 bg-white/10 p-6 shadow-lg backdrop-blur';
+
+    // All wording is the school's to change (Website › Online services).
+    $t = App\Support\SiteContent::for($page, 'online-services', $school);
 @endphp
 
-<x-layouts.public :school="$school" title="Online services" :social-links="$socialLinks">
+<x-layouts.public :school="$school" :title="$t->title()" :social-links="$socialLinks">
     {{-- Hero --}}
     <section class="section--ink relative overflow-hidden py-14 sm:py-18">
         <div class="relative mx-auto max-w-7xl px-4 sm:px-6">
@@ -18,17 +21,16 @@
                 <ol class="flex items-center gap-2 text-xs text-white/60">
                     <li><a href="{{ route('home') }}" class="link-underline hover:text-white">Home</a></li>
                     <li aria-hidden="true">/</li>
-                    <li class="font-medium text-white/90" aria-current="page">Online services</li>
+                    <li class="font-medium text-white/90" aria-current="page">{{ $t->title() }}</li>
                 </ol>
             </nav>
 
-            <p class="eyebrow eyebrow--onDark mt-6" data-aos="fade-up" data-aos-delay="60">No account needed</p>
+            <p class="eyebrow eyebrow--onDark mt-6" data-aos="fade-up" data-aos-delay="60">{{ $t('eyebrow') }}</p>
             <h1 class="mt-4 font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl" data-aos="fade-up" data-aos-delay="120">
-                Online services
+                {{ $t->title() }}
             </h1>
             <p class="mt-4 max-w-2xl text-white/75" data-aos="fade-up" data-aos-delay="180">
-                Track an admission application, confirm that someone is a student of {{ $school->name }},
-                check that a grade sheet or report card is genuine, and find how to pay fees and reach the office.
+                {{ $t->summary() }}
             </p>
 
             <div class="mt-6 flex flex-wrap gap-2" data-aos="fade-up" data-aos-delay="240">
@@ -49,9 +51,9 @@
                 {{-- Application status --}}
                 <div id="application-status" class="{{ $card }} scroll-mt-28" data-aos="fade-up">
                     <h2 class="flex items-center gap-2 font-display text-lg font-bold text-white">
-                        <span aria-hidden="true">🔍</span> Check Application Status
+                        <span aria-hidden="true">🔍</span> {{ $t('application_title') }}
                     </h2>
-                    <p class="mt-2 text-sm text-white/75">Already applied? Track your application's progress here.</p>
+                    <p class="mt-2 text-sm text-white/75">{{ $t('application_intro') }}</p>
 
                     <form method="POST" action="{{ route('online.application') }}" class="mt-5 space-y-3">
                         @csrf
@@ -93,10 +95,10 @@
                 <div id="verify-student" class="{{ $card }} scroll-mt-28" data-aos="fade-up" data-aos-delay="80"
                      x-data="{ by: '{{ $lookupByName ? $by : 'id' }}' }">
                     <h2 class="flex items-center gap-2 font-display text-lg font-bold text-white">
-                        <span aria-hidden="true">🎓</span> Verify a Student
+                        <span aria-hidden="true">🎓</span> {{ $t('student_title') }}
                     </h2>
                     <p class="mt-2 text-sm text-white/75">
-                        Confirm that someone is a student of {{ $school->name }}.
+                        {{ $t('student_intro') }}
                     </p>
 
                     <form method="POST" action="{{ route('online.student') }}" class="mt-5 space-y-3">
@@ -165,10 +167,10 @@
                 {{-- Verify a document --}}
                 <div id="verify-document" class="{{ $card }} scroll-mt-28" data-aos="fade-up" data-aos-delay="160">
                     <h2 class="flex items-center gap-2 font-display text-lg font-bold text-white">
-                        <span aria-hidden="true">📄</span> Verify a Document
+                        <span aria-hidden="true">📄</span> {{ $t('document_title') }}
                     </h2>
                     <p class="mt-2 text-sm text-white/75">
-                        Check a grade sheet or report card using the verification code printed at the bottom of it.
+                        {{ $t('document_intro') }}
                     </p>
 
                     <form method="POST" action="{{ route('online.document') }}" class="mt-5 space-y-3">
@@ -195,12 +197,9 @@
             {{-- Admission --}}
             <article class="rounded-2xl border border-slate-200 bg-white p-6" data-aos="fade-up">
                 <p class="eyebrow">Admission</p>
-                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">Apply online</h2>
+                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">{{ $t('apply_title') }}</h2>
                 @if ($admissionsOpen)
-                    <p class="mt-3 text-sm text-slate-600">
-                        Fill in the application form and upload the required documents. You receive an application
-                        number straight away — keep it to check your status on this page.
-                    </p>
+                    <p class="mt-3 text-sm text-slate-600">{{ $t('apply_body') }}</p>
                     <div class="mt-5 flex flex-wrap gap-2">
                         <x-ui.button :href="route('apply')">Apply for admission</x-ui.button>
                         <x-ui.button :href="route('public.admissions')" variant="secondary">Requirements</x-ui.button>
@@ -214,31 +213,27 @@
             {{-- Portal --}}
             <article id="portal" class="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6" data-aos="fade-up" data-aos-delay="80">
                 <p class="eyebrow">Parents &amp; students</p>
-                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">The school portal</h2>
+                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">{{ $t('portal_title') }}</h2>
                 <p class="mt-3 text-sm text-slate-600">Sign in with the account the school gave you to:</p>
                 <ul class="mt-3 space-y-1.5 text-sm text-slate-700">
-                    @foreach ([
-                        'See grades, grade sheets and report cards',
-                        'View and download the weekly class schedule',
-                        'Follow attendance and assignments',
-                        'Check fees, payments and receipts',
-                        'Message teachers and the school office',
-                    ] as $item)
+                    @foreach ($t->lines('portal_items') as $item)
                         <li class="flex gap-2"><span class="text-brand" aria-hidden="true">✓</span>{{ $item }}</li>
                     @endforeach
                 </ul>
                 <div class="mt-5"><x-ui.button :href="route('login')">Sign in</x-ui.button></div>
-                <p class="mt-3 text-xs text-slate-500">No account yet, or forgotten your password? Contact the school office.</p>
+                <p class="mt-3 text-xs text-slate-500">{{ $t('portal_note') }}</p>
             </article>
 
             {{-- Fees --}}
             <article id="fees" class="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6" data-aos="fade-up" data-aos-delay="160">
                 <p class="eyebrow">Finance</p>
-                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">Paying fees</h2>
+                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">{{ $t('fees_title') }}</h2>
                 @if (filled($paymentInstructions))
                     <p class="mt-3 whitespace-pre-line text-sm text-slate-600">{{ $paymentInstructions }}</p>
                 @endif
                 <p class="mt-3 text-sm text-slate-600">Every payment gets a receipt with a QR code you can scan to confirm it with the school.</p>
+
+                @include('partials.fee-documents', ['documents' => $feeDocuments, 'public' => true, 'heading' => $t('fees_documents')])
                 @if ($showFees)
                     <div class="mt-5"><x-ui.button :href="route('public.admissions')" variant="secondary">See the fee schedule</x-ui.button></div>
                 @endif
@@ -247,27 +242,18 @@
             {{-- About verification --}}
             <article class="rounded-2xl border border-slate-200 bg-white p-6 md:col-span-2" data-aos="fade-up">
                 <p class="eyebrow">For employers and other schools</p>
-                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">Checking our documents</h2>
-                <div class="mt-3 grid gap-4 text-sm text-slate-600 sm:grid-cols-3">
-                    <div>
-                        <p class="font-semibold text-slate-900">Grade sheets &amp; report cards</p>
-                        <p class="mt-1">Enter the verification code from the bottom of the paper. You’ll see the grades the school has on record, to compare with the paper.</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-slate-900">Receipts &amp; letters</p>
-                        <p class="mt-1">Scan the QR code printed on a receipt, admission letter or student record to confirm it was issued by the school.</p>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-slate-900">Student membership</p>
-                        <p class="mt-1">Verify a student above. Only a shortened name, class and enrolment status are shown — never contact details or results.</p>
-                    </div>
+                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">{{ $t('verify_title') }}</h2>
+                <div class="mt-3 space-y-3 text-sm text-slate-600">
+                    @foreach ($t->paragraphs('verify_body') as $paragraph)
+                        <p>{{ $paragraph }}</p>
+                    @endforeach
                 </div>
             </article>
 
             {{-- Contact --}}
             <article id="contact" class="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-6" data-aos="fade-up" data-aos-delay="80">
                 <p class="eyebrow">Help</p>
-                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">Contact the office</h2>
+                <h2 class="mt-2 font-display text-xl font-bold text-slate-900">{{ $t('contact_title') }}</h2>
                 <dl class="mt-3 space-y-2 text-sm">
                     @if ($officeHours)
                         <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Office hours</dt><dd class="text-slate-800">{{ $officeHours }}</dd></div>

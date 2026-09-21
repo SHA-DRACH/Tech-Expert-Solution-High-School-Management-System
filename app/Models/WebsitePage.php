@@ -18,6 +18,11 @@ class WebsitePage extends Model
         'about' => 'About us',
         'academics' => 'Academics',
         'admissions' => 'Admissions',
+        'teachers' => 'Teachers',
+        'news' => 'News',
+        'events' => 'Events',
+        'gallery' => 'Gallery',
+        'online-services' => 'Online services',
         'contact' => 'Contact',
     ];
 
@@ -25,12 +30,62 @@ class WebsitePage extends Model
 
     protected $fillable = [
         'school_id', 'key', 'title', 'slug', 'summary', 'sections',
-        'hero_image_path', 'meta_description', 'is_published', 'position',
+        'hero_image_path', 'meta_description', 'is_published', 'position', 'texts',
     ];
 
     protected function casts(): array
     {
-        return ['sections' => 'array', 'is_published' => 'boolean'];
+        return ['sections' => 'array', 'texts' => 'array', 'is_published' => 'boolean'];
+    }
+
+    /**
+     * Make sure every built-in page has a row the school can edit.
+     *
+     * Only the title is stored; the introduction and wording stay empty so they
+     * keep following the defaults in SiteContent until the school writes its own.
+     */
+    public static function ensureBuiltIn(School $school): void
+    {
+        $position = 1;
+
+        foreach (\App\Support\SiteContent::PAGES as $key => $definition) {
+            static::firstOrCreate(
+                ['school_id' => $school->id, 'key' => $key],
+                [
+                    'title' => str_replace(':school', $school->name, $definition['title']),
+                    'slug' => $definition['slug'],
+                    'is_published' => true,
+                    'position' => $position,
+                ],
+            );
+
+            $position++;
+        }
+    }
+
+    /** A page the school created itself, rather than one the website is built around. */
+    public function isCustom(): bool
+    {
+        return str_starts_with($this->key, \App\Support\SiteContent::CUSTOM_PREFIX);
+    }
+
+    /** Where the page lives on the public website. */
+    public function publicUrl(): string
+    {
+        return match (true) {
+            $this->isCustom() => route('public.page', $this->slug),
+            $this->key === 'home' => route('home'),
+            $this->key === 'about' => route('public.about'),
+            $this->key === 'academics' => route('public.academics'),
+            $this->key === 'admissions' => route('public.admissions'),
+            $this->key === 'teachers' => route('public.teachers'),
+            $this->key === 'news' => route('public.news'),
+            $this->key === 'events' => route('public.events'),
+            $this->key === 'gallery' => route('public.gallery'),
+            $this->key === 'online-services' => route('online.index'),
+            $this->key === 'contact' => route('public.contact'),
+            default => route('home'),
+        };
     }
 
     public function auditLabel(): string

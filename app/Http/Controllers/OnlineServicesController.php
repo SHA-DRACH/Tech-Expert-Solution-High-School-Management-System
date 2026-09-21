@@ -6,10 +6,12 @@ use App\Models\AcademicYear;
 use App\Models\Admission;
 use App\Models\DocumentCode;
 use App\Models\Enrollment;
+use App\Models\FeeStructure;
 use App\Models\School;
 use App\Models\Section;
 use App\Models\SocialLink;
 use App\Models\Student;
+use App\Models\WebsitePage;
 use App\Services\Gradebook;
 use App\Services\ProgressReport;
 use App\Services\PublicVisibility;
@@ -48,6 +50,7 @@ class OnlineServicesController extends Controller
 
         return view('public.online-services', [
             'school' => $school,
+            'page' => WebsitePage::published()->where('key', 'online-services')->first(),
             'socialLinks' => SocialLink::orderBy('position')->get(),
             'sections' => Section::with('schoolClass')->get()->sortBy(fn (Section $s) => $s->full_name)->values(),
             'lookupByName' => (bool) $this->settings->get('online_lookup_by_name'),
@@ -55,6 +58,8 @@ class OnlineServicesController extends Controller
             'paymentInstructions' => $this->settings->get('online_payment_instructions'),
             'officeHours' => $this->settings->get('online_office_hours'),
             'showFees' => app(PublicVisibility::class)->shows('fees'),
+            // Only the PDFs the school ticked for the website.
+            'feeDocuments' => FeeStructure::publicDocuments(),
         ]);
     }
 

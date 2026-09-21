@@ -10,9 +10,11 @@
     $requirements = $find('requirement') ?? $find('ask');
     $process = $find('how to apply') ?? $find('process');
     $next = $find('what happens next') ?? $find('next');
+
+    $t = App\Support\SiteContent::for($page, 'admissions', $school);
 @endphp
 
-<x-layouts.public :school="$school" title="Admissions" :social-links="$socialLinks">
+<x-layouts.public :school="$school" :title="$t->title()" :social-links="$socialLinks">
     <section class="section--ink relative overflow-hidden py-16 sm:py-20">
         @if ($page?->hero_image_path)
             <img src="{{ Storage::disk('public')->url($page->hero_image_path) }}" alt=""
@@ -24,7 +26,7 @@
                 <ol class="flex items-center gap-2 text-xs text-white/60">
                     <li><a href="{{ route('home') }}" class="link-underline hover:text-white">Home</a></li>
                     <li aria-hidden="true">/</li>
-                    <li class="font-medium text-white/90" aria-current="page">Admissions</li>
+                    <li class="font-medium text-white/90" aria-current="page">{{ $t->title() }}</li>
                 </ol>
             </nav>
 
@@ -34,17 +36,17 @@
 
             <h1 class="mt-4 font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl"
                 data-aos="fade-up" data-aos-delay="120">
-                {{ $page?->title ?? 'Admissions' }}
+                {{ $t->title() }}
             </h1>
 
             <p class="mt-4 max-w-2xl text-white/75" data-aos="fade-up" data-aos-delay="180">
-                {{ $page?->summary ?? 'Apply online in a few minutes and track your application with the number we issue.' }}
+                {{ $t->summary() }}
             </p>
 
             <div class="mt-8" data-aos="fade-up" data-aos-delay="240">
                 <a href="{{ route('apply') }}"
                    class="press inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-white/90">
-                    Apply online
+                    {{ $t('hero_button') }}
                 </a>
             </div>
         </div>
@@ -54,9 +56,9 @@
     <section class="section">
         <div class="mx-auto max-w-7xl px-4 sm:px-6">
             <div class="max-w-2xl" data-aos="fade-up">
-                <p class="eyebrow">The process</p>
+                <p class="eyebrow">{{ $t('process_eyebrow') }}</p>
                 <h2 class="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                    How admission works
+                    {{ $t('process_heading') }}
                 </h2>
 
                 @if (! empty($process['body']))
@@ -70,10 +72,10 @@
 
             <ol class="mt-10 grid gap-6 md:grid-cols-4">
                 @foreach ([
-                    ['Apply online', 'Complete the four-step form: student details, guardian details, documents, then review.'],
-                    ['Get your number', 'You receive an application number immediately. Keep it for any enquiry.'],
-                    ['We verify', 'The registrar reviews the application and checks the documents you uploaded.'],
-                    ['We contact you', 'You hear the outcome on the phone number or email address you gave us.'],
+                    [$t('step_1_title'), $t('step_1_body')],
+                    [$t('step_2_title'), $t('step_2_body')],
+                    [$t('step_3_title'), $t('step_3_body')],
+                    [$t('step_4_title'), $t('step_4_body')],
                 ] as $index => [$title, $body])
                     <li class="relative" data-aos="fade-up" data-aos-delay="{{ $index * 90 }}">
                         {{-- Connector between steps on wide screens. --}}
@@ -102,9 +104,9 @@
 
                 {{-- Required documents --}}
                 <div data-aos="fade-right">
-                    <p class="eyebrow">What to bring</p>
+                    <p class="eyebrow">{{ $t('documents_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                        Required documents
+                        {{ $t('documents_heading') }}
                     </h2>
 
                     @if (! empty($requirements['body']))
@@ -126,16 +128,15 @@
                     </ul>
 
                     <p class="mt-4 text-xs text-slate-500">
-                        Documents can be uploaded as PDF or photographs during the application, or brought
-                        to the school office.
+                        {{ $t('documents_note') }}
                     </p>
                 </div>
 
                 {{-- Available classes --}}
                 <div data-aos="fade-left" data-aos-delay="80">
-                    <p class="eyebrow">Where you can apply</p>
+                    <p class="eyebrow">{{ $t('classes_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                        Available classes
+                        {{ $t('classes_heading') }}
                     </h2>
 
                     @if ($classes->isNotEmpty())
@@ -152,7 +153,7 @@
                         </div>
                     @else
                         <p class="mt-6 text-sm text-slate-600">
-                            Contact the office to ask which classes are currently accepting applications.
+                            {{ $t('classes_empty') }}
                         </p>
                     @endif
 
@@ -182,12 +183,12 @@
         <section class="section">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="max-w-2xl" data-aos="fade-up">
-                    <p class="eyebrow">School fees</p>
+                    <p class="eyebrow">{{ $t('fees_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                        What it costs
+                        {{ $t('fees_heading') }}
                     </h2>
                     <p class="mt-3 text-slate-600">
-                        Fees are charged per term. Contact the office about payment plans or scholarships.
+                        {{ $t('fees_note') }}
                     </p>
                 </div>
 
@@ -221,20 +222,20 @@
     <section class="section section--ink">
         <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 class="font-display text-2xl font-bold text-white sm:text-4xl" data-aos="fade-up">
-                Ready to apply?
+                {{ $t('cta_heading') }}
             </h2>
             <p class="mt-4 text-white/75" data-aos="fade-up" data-aos-delay="80">
-                The form takes a few minutes. Nothing is submitted until you review and confirm.
+                {{ $t('cta_body') }}
             </p>
 
             <div class="mt-9 flex flex-wrap justify-center gap-3" data-aos="fade-up" data-aos-delay="160">
                 <a href="{{ route('apply') }}"
                    class="press inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90">
-                    Apply online
+                    {{ $t('cta_primary') }}
                 </a>
                 <a href="{{ route('public.contact') }}"
                    class="press inline-flex items-center rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                    Ask a question
+                    {{ $t('cta_secondary') }}
                 </a>
             </div>
         </div>

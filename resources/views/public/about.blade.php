@@ -24,9 +24,11 @@
     // Anything the school wrote that did not match a known heading still shows.
     $matched = $sections->pluck('block.heading')->filter()->all();
     $extra = $blocks->reject(fn (array $b) => in_array($b['heading'] ?? '', $matched, true))->values();
+
+    $t = App\Support\SiteContent::for($page, 'about', $school);
 @endphp
 
-<x-layouts.public :school="$school" title="About us" :social-links="$socialLinks">
+<x-layouts.public :school="$school" :title="$t->title()" :social-links="$socialLinks">
     <section class="section--ink relative overflow-hidden py-16 sm:py-20">
         @if ($page?->hero_image_path)
             <img src="{{ Storage::disk('public')->url($page->hero_image_path) }}" alt=""
@@ -38,17 +40,17 @@
                 <ol class="flex items-center gap-2 text-xs text-white/60">
                     <li><a href="{{ route('home') }}" class="link-underline hover:text-white">Home</a></li>
                     <li aria-hidden="true">/</li>
-                    <li class="font-medium text-white/90" aria-current="page">About us</li>
+                    <li class="font-medium text-white/90" aria-current="page">{{ $t->title() }}</li>
                 </ol>
             </nav>
 
             <h1 class="mt-4 font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl"
                 data-aos="fade-up" data-aos-delay="80">
-                {{ $page?->title ?? 'About us' }}
+                {{ $t->title() }}
             </h1>
 
             <p class="mt-4 max-w-2xl text-white/75" data-aos="fade-up" data-aos-delay="160">
-                {{ $page?->summary ?? 'A supportive learning community dedicated to character, achievement, and service.' }}
+                {{ $t->summary() }}
             </p>
         </div>
     </section>
@@ -153,9 +155,9 @@
         <section class="section section--surface">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="max-w-2xl" data-aos="fade-up">
-                    <p class="eyebrow">Our staff</p>
+                    <p class="eyebrow">{{ $t('staff_eyebrow') }}</p>
                     <h2 class="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                        The people who teach here
+                        {{ $t('staff_heading') }}
                     </h2>
                 </div>
 
@@ -187,7 +189,7 @@
 
                 <div class="mt-8" data-aos="fade-up">
                     <a href="{{ route('public.teachers') }}" class="group inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
-                        Meet all our teachers
+                        {{ $t('staff_link') }}
                         <span aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-1">&rarr;</span>
                     </a>
                 </div>
@@ -198,20 +200,20 @@
     <section class="section section--ink">
         <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 class="font-display text-2xl font-bold text-white sm:text-3xl" data-aos="fade-up">
-                Come and see the school
+                {{ $t('cta_heading') }}
             </h2>
             <p class="mt-3 text-white/75" data-aos="fade-up" data-aos-delay="80">
-                Applications are open. Start online, or contact the office to arrange a visit.
+                {{ $t('cta_body') }}
             </p>
 
             <div class="mt-8 flex flex-wrap justify-center gap-3" data-aos="fade-up" data-aos-delay="160">
                 <a href="{{ route('apply') }}"
                    class="press inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90">
-                    Apply for admission
+                    {{ $t('cta_primary') }}
                 </a>
                 <a href="{{ route('public.contact') }}"
                    class="press inline-flex items-center rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                    Contact the office
+                    {{ $t('cta_secondary') }}
                 </a>
             </div>
         </div>

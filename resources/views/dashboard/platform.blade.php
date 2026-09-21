@@ -1,7 +1,7 @@
 <x-layouts.app title="Platform overview" heading="Platform overview">
     <x-ui.page-header
         title="Platform overview"
-        description="Every school on the Grace School Management System."
+        :description="'Every school on '.config('app.product', 'NovaxSuites').'.'"
     >
         <x-slot:actions>
             <x-ui.button :href="route('platform.schools')">Manage schools</x-ui.button>

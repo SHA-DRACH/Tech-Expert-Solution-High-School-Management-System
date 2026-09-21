@@ -53,6 +53,15 @@
             </x-ui.card>
         @endif
 
+        @if ($feeDocuments->isNotEmpty())
+            <x-ui.card class="lg:col-span-3" title="Fee structure documents" description="The school's fee schedules for your class.">
+                <x-slot:actions>
+                    <x-ui.button :href="route('student.fees')" variant="ghost" size="sm">My fees</x-ui.button>
+                </x-slot:actions>
+                @include('partials.fee-documents', ['documents' => $feeDocuments])
+            </x-ui.card>
+        @endif
+
         @if ($abilities['view_grades'])
             <x-ui.card class="lg:col-span-2" title="Recent grades" description="Approved marks only" :padded="false">
                 <x-slot:actions>

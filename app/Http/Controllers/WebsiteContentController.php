@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\GalleryItem;
 use App\Models\NewsPost;
+use App\Models\SchoolSetting;
 use App\Models\SocialLink;
 use App\Models\WebsitePage;
 use App\Services\AuditLogger;
 use App\Services\PublicVisibility;
+use App\Support\SiteContent;
+use App\Support\SiteMenu;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
@@ -27,6 +31,10 @@ class WebsiteContentController extends Controller
     {
         abort_unless($request->user()->hasPermission('website.manage'), 403);
 
+        // Every built-in page gets a row, so every page is there to edit -
+        // including ones added to the site after the school was set up.
+        WebsitePage::ensureBuiltIn($request->user()->school);
+
         return view('website.index', [
             'visibilitySwitches' => PublicVisibility::SWITCHES,
             'visibility' => $visibility->all(),
@@ -38,6 +46,9 @@ class WebsiteContentController extends Controller
             'socialLinks' => SocialLink::orderBy('position')->get(),
             'pageKeys' => WebsitePage::KEYS,
             'platforms' => SocialLink::PLATFORMS,
+            'menu' => SiteMenu::saved(),
+            'menuTargets' => SiteMenu::targets(),
+            'footerText' => SiteMenu::footerText(),
         ]);
     }
 
@@ -46,7 +57,13 @@ class WebsiteContentController extends Controller
         abort_unless($request->user()->hasPermission('website.manage'), 403);
         abort_unless($websitePage->school_id === $request->user()->school_id, 403);
 
-        return view('website.edit-page', ['page' => $websitePage]);
+        return view('website.edit-page', [
+            'page' => $websitePage,
+            // The wording fields this page has; a custom page has none beyond
+            // its title, introduction and content blocks.
+            'wording' => SiteContent::groupsFor($websitePage->key),
+            'wordingText' => SiteContent::for($websitePage, $websitePage->key, $request->user()->school),
+        ]);
     }
 
     public function updatePage(Request $request, WebsitePage $websitePage, AuditLogger $audit): RedirectResponse
@@ -63,6 +80,8 @@ class WebsiteContentController extends Controller
             'sections.*.heading' => ['nullable', 'string', 'max:180'],
             'sections.*.body' => ['nullable', 'string', 'max:5000'],
             'hero_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'texts' => ['array'],
+            'texts.*' => ['nullable', 'string', 'max:3000'],
         ]);
 
         $attributes = [
@@ -74,6 +93,16 @@ class WebsiteContentController extends Controller
             'sections' => collect($data['sections'] ?? [])
                 ->filter(fn (array $section) => filled($section['heading'] ?? null) || filled($section['body'] ?? null))
                 ->values()
+                ->all(),
+            /*
+             | Only fields this page actually has, and only the ones written. A
+             | field cleared back to empty is dropped, so it follows the default
+             | again instead of printing a blank heading on the site.
+             */
+            'texts' => collect($data['texts'] ?? [])
+                ->only(SiteContent::keysFor($websitePage->key))
+                ->map(fn ($value) => is_string($value) ? trim($value) : null)
+                ->filter(fn ($value) => filled($value))
                 ->all(),
         ];
 
@@ -229,6 +258,121 @@ class WebsiteContentController extends Controller
         $audit->log('deleted', 'Website', 'A gallery image was removed.');
 
         return back()->with('status', 'Image removed.');
+    }
+
+    /* ----------------------------------------------------- custom pages */
+
+    /** A new page of the school's own - School rules, Uniform, Transport. */
+    public function storeCustomPage(Request $request, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->hasPermission('website.manage'), 403);
+
+        $data = $request->validate(['title' => ['required', 'string', 'max:120']]);
+
+        // Short enough for the page key column, and never a built-in address.
+        $base = Str::limit(Str::slug($data['title']), 30, '') ?: 'page';
+        $slug = $base;
+        $suffix = 2;
+
+        while (WebsitePage::where('key', SiteContent::CUSTOM_PREFIX.$slug)->exists()) {
+            $slug = Str::limit($base, 26, '').'-'.$suffix++;
+        }
+
+        $page = WebsitePage::create([
+            'school_id' => $request->user()->school_id,
+            'key' => SiteContent::CUSTOM_PREFIX.$slug,
+            'title' => $data['title'],
+            'slug' => $slug,
+            'sections' => [],
+            // A draft until the school has written it and chosen to publish.
+            'is_published' => false,
+            'position' => (int) WebsitePage::max('position') + 1,
+        ]);
+
+        $audit->log('created', 'Website', "The page \"{$page->title}\" was created.", $page);
+
+        return redirect()->route('website.pages.edit', $page)
+            ->with('status', 'Page created. Write its content, tick "Visible on the website", then add it to the menu.');
+    }
+
+    /** Only pages the school created may be deleted; built-in pages are edited or hidden. */
+    public function destroyCustomPage(Request $request, WebsitePage $websitePage, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->hasPermission('website.manage'), 403);
+        abort_unless($websitePage->school_id === $request->user()->school_id, 403);
+        abort_unless($websitePage->isCustom(), 403, 'Built-in pages cannot be deleted. Untick "Visible on the website" to hide one.');
+
+        $title = $websitePage->title;
+
+        if ($websitePage->hero_image_path) {
+            Storage::disk('public')->delete($websitePage->hero_image_path);
+        }
+
+        $websitePage->delete();
+
+        $audit->log('deleted', 'Website', "The page \"{$title}\" was deleted.");
+
+        return redirect()->route('website.index')->with('status', "\"{$title}\" was deleted.");
+    }
+
+    /* ----------------------------------------------------- menu & footer */
+
+    /**
+     * The menu: labels, order, what each link points at, and which are shown.
+     * Plus the short text in the footer.
+     */
+    public function updateMenu(Request $request, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->hasPermission('website.manage'), 403);
+
+        $targets = array_merge(array_keys(SiteMenu::targets()), ['url']);
+
+        $data = $request->validate([
+            'menu' => ['array', 'max:'.SiteMenu::MAX_ITEMS],
+            'menu.*.label' => ['required', 'string', 'max:40'],
+            'menu.*.target' => ['required', Rule::in($targets)],
+            'menu.*.url' => ['nullable', 'string', 'max:255'],
+            'menu.*.visible' => ['nullable', 'boolean'],
+            'footer_text' => ['nullable', 'string', 'max:500'],
+        ], [
+            'menu.*.label.required' => 'Every menu link needs a label.',
+        ]);
+
+        $menu = collect($data['menu'] ?? [])->values()->map(function (array $item, int $index) {
+            if ($item['target'] === 'url' && ! SiteMenu::safeUrl($item['url'] ?? null)) {
+                throw ValidationException::withMessages([
+                    "menu.$index.url" => 'Link "'.$item['label'].'" needs an address starting with / (a page on this site) or https://.',
+                ]);
+            }
+
+            return [
+                'label' => trim($item['label']),
+                'target' => $item['target'],
+                'url' => $item['target'] === 'url' ? trim($item['url']) : null,
+                'visible' => (bool) ($item['visible'] ?? false),
+            ];
+        })->all();
+
+        $schoolId = $request->user()->school_id;
+
+        SchoolSetting::updateOrCreate(['school_id' => $schoolId, 'key' => SiteMenu::SETTING], ['value' => $menu]);
+        SchoolSetting::updateOrCreate(['school_id' => $schoolId, 'key' => SiteMenu::FOOTER_SETTING], ['value' => $data['footer_text'] ?? null]);
+
+        $audit->log('updated', 'Website', 'The website menu and footer were updated.');
+
+        return back()->with('status', 'Menu and footer saved.');
+    }
+
+    /** Put the menu back to the standard links. */
+    public function resetMenu(Request $request, AuditLogger $audit): RedirectResponse
+    {
+        abort_unless($request->user()->hasPermission('website.manage'), 403);
+
+        SchoolSetting::where('key', SiteMenu::SETTING)->delete();
+
+        $audit->log('updated', 'Website', 'The website menu was reset to the standard links.');
+
+        return back()->with('status', 'Menu reset to the standard links.');
     }
 
     /* ----------------------------------------------------- social links */

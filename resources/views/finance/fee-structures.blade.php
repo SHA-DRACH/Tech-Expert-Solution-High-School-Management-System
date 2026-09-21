@@ -27,7 +27,7 @@
                     </x-slot:actions>
 
                     {{-- Editing posts the whole list back, so the form mirrors it exactly. --}}
-                    <form method="POST" action="{{ route('fees.update', $structure) }}"
+                    <form method="POST" action="{{ route('fees.update', $structure) }}" enctype="multipart/form-data"
                           x-data="{ items: {{ Js::from($structure->items->map(fn ($i) => [
                               'category' => $i->category,
                               'description' => $i->description,
@@ -88,6 +88,34 @@
                             </div>
                         </div>
 
+                        {{-- The printed fee schedule, for families to download. --}}
+                        <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Fee document (PDF)</p>
+
+                            @if ($structure->hasDocument())
+                                <div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm ring-1 ring-slate-200">
+                                    <a href="{{ route('fees.document.download', $structure) }}" class="font-medium text-brand hover:underline">
+                                        📄 {{ $structure->document_name }}
+                                    </a>
+                                    <label class="flex items-center gap-1.5 text-xs text-rose-600">
+                                        <input type="checkbox" name="remove_document" value="1" class="size-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                        Remove
+                                    </label>
+                                </div>
+                            @endif
+
+                            <label for="document-{{ $structure->id }}" class="sr-only">Upload a PDF</label>
+                            <input type="file" id="document-{{ $structure->id }}" name="document" accept="application/pdf,.pdf"
+                                   class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 file:ring-1 file:ring-slate-200 hover:file:bg-slate-100">
+                            <p class="mt-1 text-xs text-slate-500">{{ $structure->hasDocument() ? 'Choose a file to replace it.' : 'Optional.' }} PDF, up to 10 MB. Students and parents it applies to can download it.</p>
+
+                            <label class="mt-3 flex items-start gap-2">
+                                <input type="checkbox" name="document_on_website" value="1" @checked($structure->document_on_website)
+                                       class="mt-0.5 size-4 rounded border-slate-300 text-brand focus:ring-brand">
+                                <span class="text-sm text-slate-600">Also show it on the public <strong>Online services</strong> page, for anyone to download</span>
+                            </label>
+                            @error('document')<p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>@enderror
+                        </div>
                         <div class="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                             <label class="flex items-center gap-2">
                                 <input type="checkbox" name="is_active" value="1" @checked($structure->is_active)
@@ -100,7 +128,7 @@
                                     :action="route('fees.destroy', $structure)"
                                     method="DELETE"
                                     title="Delete this fee structure?"
-                                    :message="'&quot;'.$structure->name.'&quot; will be removed. Invoices already raised from it are not affected.'"
+                                    :message="'“'.$structure->name.'” will be removed. Invoices already raised from it are not affected.'"
                                     confirm="Delete structure"
                                     class="text-rose-600 hover:bg-rose-50"
                                 >Delete</x-ui.confirm>
@@ -146,7 +174,7 @@
         </div>
 
         <x-ui.card title="New fee structure">
-            <form method="POST" action="{{ route('fees.store') }}" class="space-y-4"
+            <form method="POST" action="{{ route('fees.store') }}" class="space-y-4" enctype="multipart/form-data"
                   x-data="{ items: [{ category: 'Tuition', description: '', amount: '' }] }">
                 @csrf
 
@@ -197,6 +225,17 @@
                         Add a line
                     </x-ui.button>
                 </div>
+
+                <x-ui.field label="Fee document (PDF)" name="document" hint="Optional. The printed fee schedule, up to 10 MB, for students and parents to download.">
+                    <input type="file" id="document" name="document" accept="application/pdf,.pdf"
+                           class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+                </x-ui.field>
+
+                <label class="flex items-start gap-2">
+                    <input type="checkbox" name="document_on_website" value="1" @checked(old('document_on_website'))
+                           class="mt-0.5 size-4 rounded border-slate-300 text-brand focus:ring-brand">
+                    <span class="text-sm text-slate-600">Also show the PDF on the public <strong>Online services</strong> page</span>
+                </label>
 
                 <x-ui.button type="submit" class="w-full">Create structure</x-ui.button>
             </form>

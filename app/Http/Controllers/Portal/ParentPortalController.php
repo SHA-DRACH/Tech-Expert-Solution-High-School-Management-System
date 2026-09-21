@@ -10,6 +10,7 @@ use App\Models\AssessmentScore;
 use App\Models\AssignmentSubmission;
 use App\Models\AttendanceRecord;
 use App\Models\Event;
+use App\Models\FeeStructure;
 use App\Models\GradeScale;
 use App\Models\Guardian;
 use App\Models\Invoice;
@@ -54,6 +55,8 @@ class ParentPortalController extends Controller
             'events' => Event::upcoming()->limit(4)->get(),
             'recentGrades' => $child ? $this->recentGrades($guardian, $child, 5) : collect(),
             'openRequests' => $guardian->requests()->whereIn('status', ['open', 'in_progress'])->count(),
+            // Fee schedules for this child's class, for a parent cleared to see fees.
+            'feeDocuments' => $child && $guardian->canViewFinanceFor($child) ? FeeStructure::documentsFor($child) : collect(),
             'week' => $week = $this->scheduleFor($guardian, $child),
             'days' => app(ClassSchedule::class)->days($week),
         ]);
@@ -221,6 +224,7 @@ class ParentPortalController extends Controller
             'outstandingMinor' => $child->outstandingMinor(),
             'paidMinor' => (int) Payment::where('student_id', $child->id)->sum('amount_minor'),
             'totalMinor' => (int) Invoice::where('student_id', $child->id)->sum('total_minor'),
+            'feeDocuments' => FeeStructure::documentsFor($child),
         ]);
     }
 

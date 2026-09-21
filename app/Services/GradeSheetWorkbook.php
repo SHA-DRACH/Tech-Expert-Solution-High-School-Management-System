@@ -57,7 +57,7 @@ class GradeSheetWorkbook
     {
         $book = new Spreadsheet;
         $book->getProperties()
-            ->setCreator($school?->name ?? 'Grace School Management System')
+            ->setCreator($school?->name ?? config('app.product', 'NovaxSuites'))
             ->setTitle($this->gradeSheet->title($section, null, $sheet));
 
         $book->removeSheetByIndex(0);

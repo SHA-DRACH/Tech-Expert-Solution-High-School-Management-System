@@ -17,6 +17,7 @@ use App\Http\Controllers\EnrollmentController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\FeeDocumentController;
 use App\Http\Controllers\ExaminationController;
 use App\Http\Controllers\FeeStructureController;
 use App\Http\Controllers\FinanceController;
@@ -78,6 +79,9 @@ Route::get('/news', [PublicSchoolController::class, 'news'])->name('public.news'
 Route::get('/news/{slug}', [PublicSchoolController::class, 'newsPost'])->name('public.news.show');
 Route::get('/gallery', [PublicSchoolController::class, 'gallery'])->name('public.gallery');
 Route::get('/events', [PublicSchoolController::class, 'events'])->name('public.events');
+Route::get('/pages/{slug}', [PublicSchoolController::class, 'customPage'])
+    ->where('slug', '[a-z0-9-]+')
+    ->name('public.page');
 Route::get('/apply', [PublicAdmissionController::class, 'create'])->name('apply');
 Route::post('/apply', [PublicAdmissionController::class, 'store'])->middleware('throttle:5,1')->name('apply.store');
 Route::get('/apply/complete', [PublicAdmissionController::class, 'complete'])->name('apply.complete');
@@ -87,6 +91,9 @@ Route::get('/apply/complete', [PublicAdmissionController::class, 'complete'])->n
 | visitor, and the details typed in are POSTed so they never sit in a URL.
 */
 Route::get('/online-services', [OnlineServicesController::class, 'index'])->name('online.index');
+Route::get('/online-services/fees/{feeStructure}/download', [FeeDocumentController::class, 'public'])
+    ->middleware('throttle:30,1')
+    ->name('online.fees.download');
 Route::post('/online-services/student', [OnlineServicesController::class, 'checkStudent'])
     ->middleware('throttle:10,1')
     ->name('online.student');
@@ -490,6 +497,13 @@ Route::middleware(['auth', 'school.context'])->group(function () {
     | report at year end. reportcards.view, checked in the controller, which
     | also decides who may record conduct (the class sponsor or the office).
     */
+    /*
+    | A fee structure's PDF for someone signed in. FeeDocumentController
+    | decides: finance staff, or a student or parent the structure applies to.
+    */
+    Route::get('/fee-structures/{feeStructure}/document/download', [FeeDocumentController::class, 'portal'])
+        ->name('fees.document.download');
+
     Route::get('/progress-reports', [ProgressReportController::class, 'index'])->name('progress.index');
     Route::get('/progress-reports/{section}/grade-sheets', [ProgressReportController::class, 'classGradeSheets'])->name('progress.grade-sheets');
     Route::get('/progress-reports/{section}/report-cards', [ProgressReportController::class, 'classReportCards'])->name('progress.report-cards');
@@ -757,6 +771,10 @@ Route::middleware(['auth', 'school.context'])->group(function () {
         Route::get('/website', [WebsiteContentController::class, 'index'])->name('website.index');
         Route::get('/website/pages/{websitePage}', [WebsiteContentController::class, 'editPage'])->name('website.pages.edit');
         Route::put('/website/pages/{websitePage}', [WebsiteContentController::class, 'updatePage'])->name('website.pages.update');
+        Route::post('/website/pages', [WebsiteContentController::class, 'storeCustomPage'])->name('website.pages.store');
+        Route::delete('/website/pages/{websitePage}', [WebsiteContentController::class, 'destroyCustomPage'])->name('website.pages.destroy');
+        Route::put('/website/menu', [WebsiteContentController::class, 'updateMenu'])->name('website.menu.update');
+        Route::delete('/website/menu', [WebsiteContentController::class, 'resetMenu'])->name('website.menu.reset');
 
         Route::post('/website/news', [WebsiteContentController::class, 'storeNews'])->name('website.news.store');
         Route::put('/website/news/{newsPost}', [WebsiteContentController::class, 'updateNews'])->name('website.news.update');

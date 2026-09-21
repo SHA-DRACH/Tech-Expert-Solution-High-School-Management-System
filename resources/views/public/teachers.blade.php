@@ -1,27 +1,28 @@
 @php
     // Grouped by department so the page reads as a staff list, not a wall.
     $byDepartment = $teachers->groupBy(fn ($teacher) => $teacher->department?->name ?? 'Teaching staff');
+
+    $t = App\Support\SiteContent::for($page, 'teachers', $school);
 @endphp
 
-<x-layouts.public :school="$school" title="Teachers" :social-links="$socialLinks">
+<x-layouts.public :school="$school" :title="$t->title()" :social-links="$socialLinks">
     <section class="section--ink py-16 sm:py-20">
         <div class="mx-auto max-w-7xl px-4 sm:px-6">
             <nav aria-label="Breadcrumb" data-aos="fade-up">
                 <ol class="flex items-center gap-2 text-xs text-white/60">
                     <li><a href="{{ route('home') }}" class="link-underline hover:text-white">Home</a></li>
                     <li aria-hidden="true">/</li>
-                    <li class="font-medium text-white/90" aria-current="page">Teachers</li>
+                    <li class="font-medium text-white/90" aria-current="page">{{ $t->title() }}</li>
                 </ol>
             </nav>
 
             <h1 class="mt-4 font-display text-3xl font-bold text-white sm:text-4xl lg:text-5xl"
                 data-aos="fade-up" data-aos-delay="80">
-                Our teachers
+                {{ $t->title() }}
             </h1>
 
             <p class="mt-4 max-w-2xl text-white/75" data-aos="fade-up" data-aos-delay="160">
-                The people in front of the class at {{ $school->short_name ?? $school->name }}, and what
-                they bring to it.
+                {{ $t->summary() }}
             </p>
         </div>
     </section>
@@ -33,7 +34,7 @@
                     <span class="mx-auto grid size-14 place-items-center rounded-full bg-slate-100 text-xl text-slate-400"
                           aria-hidden="true">❋</span>
 
-                    <h2 class="mt-5 font-display text-lg font-bold text-slate-900">No profiles published yet</h2>
+                    <h2 class="mt-5 font-display text-lg font-bold text-slate-900">{{ $t('empty_heading') }}</h2>
                     <p class="mt-2 text-sm text-slate-600">
                         {{ $school->name }} has not published its staff profiles.
                         <a href="{{ route('public.contact') }}" class="font-medium text-brand hover:underline">Contact the office</a>
@@ -124,20 +125,20 @@
     <section class="section section--ink">
         <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 class="font-display text-2xl font-bold text-white sm:text-3xl" data-aos="fade-up">
-                Join a school that knows your child
+                {{ $t('cta_heading') }}
             </h2>
             <p class="mt-3 text-white/75" data-aos="fade-up" data-aos-delay="80">
-                Small classes, teachers who notice, and reporting families can actually follow.
+                {{ $t('cta_body') }}
             </p>
 
             <div class="mt-8 flex flex-wrap justify-center gap-3" data-aos="fade-up" data-aos-delay="160">
                 <a href="{{ route('apply') }}"
                    class="press inline-flex items-center rounded-lg bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90">
-                    Apply for admission
+                    {{ $t('cta_primary') }}
                 </a>
                 <a href="{{ route('public.contact') }}"
                    class="press inline-flex items-center rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                    Contact the office
+                    {{ $t('cta_secondary') }}
                 </a>
             </div>
         </div>

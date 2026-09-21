@@ -7,21 +7,20 @@
     $socialLinks = $socialLinks ?? collect();
 
     /*
-     | The navigation the spec asks for, minus anything this school has chosen
-     | not to publish. A hidden section leaves no dead link behind.
+     | The menu is the school's own (Website › Menu & footer). SiteMenu drops any
+     | section the school has chosen not to publish, so no dead link is left.
+     | A link counts as current when its route matches, or - for pages and
+     | addresses without a route - when it points at the page being viewed.
      */
-    $navigation = collect([
-        ['label' => 'Home', 'url' => route('home'), 'active' => 'home', 'shown' => true],
-        ['label' => 'About', 'url' => route('public.about'), 'active' => 'public.about', 'shown' => true],
-        ['label' => 'Academics', 'url' => route('public.academics'), 'active' => 'public.academics', 'shown' => true],
-        ['label' => 'Admissions', 'url' => route('public.admissions'), 'active' => 'public.admissions', 'shown' => true],
-        ['label' => 'Teachers', 'url' => route('public.teachers'), 'active' => 'public.teachers', 'shown' => $visibility->shows('teachers')],
-        ['label' => 'News', 'url' => route('public.news'), 'active' => 'public.news*', 'shown' => $visibility->shows('news')],
-        ['label' => 'Events', 'url' => route('public.events'), 'active' => 'public.events', 'shown' => $visibility->shows('events')],
-        ['label' => 'Gallery', 'url' => route('public.gallery'), 'active' => 'public.gallery', 'shown' => $visibility->shows('gallery')],
-        ['label' => 'Online services', 'url' => route('online.index'), 'active' => 'online.*', 'shown' => true],
-        ['label' => 'Contact', 'url' => route('public.contact'), 'active' => 'public.contact', 'shown' => true],
-    ])->filter(fn (array $item) => $item['shown'])->values();
+    $navigation = App\Support\SiteMenu::links($visibility)->map(function (array $item) {
+        $item['current'] = $item['active']
+            ? request()->routeIs($item['active'])
+            : rtrim($item['url'], '/') === rtrim(request()->url(), '/');
+
+        return $item;
+    });
+
+    $footerText = App\Support\SiteMenu::footerText();
 @endphp
 
 <!DOCTYPE html>
@@ -57,6 +56,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen flex-col bg-white font-sans text-slate-900 antialiased">
+@include('partials.splash')
 
 <a href="#main" class="skip-link">Skip to content</a>
 
@@ -112,9 +112,9 @@
 
         <nav class="hidden items-center gap-0.5 text-sm xl:flex" aria-label="Main">
             @foreach ($navigation as $item)
-                @php $isActive = request()->routeIs($item['active']); @endphp
+                @php $isActive = $item['current']; @endphp
 
-                <a href="{{ $item['url'] }}"
+                <a href="{{ $item['url'] }}" @if ($item['external']) target="_blank" rel="noopener noreferrer" @endif
                    class="group relative whitespace-nowrap rounded-lg px-2.5 py-2 font-medium transition-colors
                           {{ $isActive ? 'text-brand' : 'text-slate-600 hover:text-brand' }}"
                    @if ($isActive) aria-current="page" @endif>
@@ -153,8 +153,8 @@
                 <a href="{{ $item['url'] }}"
                    @class([
                        'block rounded-lg px-3 py-2.5 font-medium transition-colors',
-                       'bg-brand/8 text-brand' => request()->routeIs($item['active']),
-                       'text-slate-700 hover:bg-slate-50' => ! request()->routeIs($item['active']),
+                       'bg-brand/8 text-brand' => $item['current'],
+                       'text-slate-700 hover:bg-slate-50' => ! $item['current'],
                    ])>{{ $item['label'] }}</a>
             @endforeach
 
@@ -186,7 +186,7 @@
                 <p class="font-display text-base font-bold text-white">{{ $school->name }}</p>
             </div>
 
-            <p class="mt-4 max-w-sm text-sm">{{ $school->motto }}</p>
+            <p class="mt-4 max-w-sm whitespace-pre-line text-sm">{{ $footerText ?? $school->motto }}</p>
 
             @if ($socialLinks->isNotEmpty())
                 <div class="mt-5 flex flex-wrap gap-2">
@@ -231,8 +231,8 @@
 
     <div class="border-t border-white/10">
         <p class="mx-auto max-w-7xl px-4 py-5 text-xs text-white/50 sm:px-6">
-            &copy; {{ now()->year }} {{ $school->name }}. Powered by the Grace School Management System,
-            built by Shadrach Jimice Jr. &middot; Powered by Tech Expert Solution.
+            &copy; {{ now()->year }} {{ $school->name }}. Powered by {{ config('app.product', 'NovaxSuites') }}.
+            Built by Shadrach Jimice Jr.
         </p>
     </div>
 </footer>

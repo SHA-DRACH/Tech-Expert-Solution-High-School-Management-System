@@ -16,6 +16,12 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
 
     /*
+    | The platform's product name, shown on the loading splash and in the
+    | "Powered by" credit. Separate from APP_NAME, which names this install.
+    */
+    'product' => env('APP_PRODUCT', 'NovaxSuites'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
